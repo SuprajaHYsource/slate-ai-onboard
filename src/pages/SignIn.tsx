@@ -33,11 +33,27 @@ const SignIn = () => {
 
       if (error) throw error;
 
+      // Update last sign in and log activity
+      const { data: { user } } = await supabase.auth.getUser();
+      
+      if (user) {
+        await supabase.from("profiles").update({
+          last_sign_in: new Date().toISOString(),
+        }).eq("user_id", user.id);
+
+        await supabase.from("activity_logs").insert({
+          user_id: user.id,
+          performed_by: user.id,
+          action_type: "login",
+          description: "User logged in",
+        });
+      }
+
       toast({
         title: "Success",
         description: "Signed in successfully!",
       });
-      navigate("/profile");
+      navigate("/dashboard");
     } catch (error: any) {
       console.error("Error signing in:", error);
       toast({
