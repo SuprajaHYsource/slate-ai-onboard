@@ -47,6 +47,13 @@ const SignUp = () => {
     setLoading(true);
 
     try {
+      // Log signup attempt
+      await supabase.from("activity_logs").insert({
+        action_type: "signup",
+        description: `Signup attempt for ${formData.email}`,
+        metadata: { email: formData.email, method: "manual" },
+      });
+
       // Send OTP
       const { data, error } = await supabase.functions.invoke("send-otp", {
         body: { email: formData.email },
@@ -81,10 +88,17 @@ const SignUp = () => {
 
   const handleSSOSignUp = async (provider: "google" | "github" | "azure") => {
     try {
+      // Log SSO signup attempt
+      await supabase.from("activity_logs").insert({
+        action_type: "signup",
+        description: `SSO signup attempt via ${provider}`,
+        metadata: { method: provider },
+      });
+
       const { error } = await supabase.auth.signInWithOAuth({
         provider,
         options: {
-          redirectTo: `${window.location.origin}/profile`,
+          redirectTo: `${window.location.origin}/dashboard`,
         },
       });
 
