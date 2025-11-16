@@ -34,9 +34,9 @@ serve(async (req) => {
       .single();
 
     if (fetchError || !otpRecord) {
-      console.error("OTP not found:", fetchError);
+      console.error("OTP not found for email:", email, fetchError);
       return new Response(
-        JSON.stringify({ error: "Invalid or expired OTP" }),
+        JSON.stringify({ error: "No valid OTP found. Please request a new OTP." }),
         {
           headers: { ...corsHeaders, "Content-Type": "application/json" },
           status: 400,
@@ -44,10 +44,22 @@ serve(async (req) => {
       );
     }
 
+    console.log("OTP Record found:", {
+      email: otpRecord.email,
+      expires_at: otpRecord.expires_at,
+      attempts: otpRecord.attempts,
+      verified: otpRecord.verified,
+      created_at: otpRecord.created_at
+    });
+
     // Check if OTP is expired
-    if (new Date(otpRecord.expires_at) < new Date()) {
+    const now = new Date();
+    const expiresAt = new Date(otpRecord.expires_at);
+    
+    if (expiresAt < now) {
+      console.error("OTP expired:", { expiresAt, now });
       return new Response(
-        JSON.stringify({ error: "OTP has expired" }),
+        JSON.stringify({ error: "OTP has expired. Please request a new one." }),
         {
           headers: { ...corsHeaders, "Content-Type": "application/json" },
           status: 400,
@@ -67,6 +79,8 @@ serve(async (req) => {
     }
 
     // Verify OTP
+    console.log("Comparing OTPs:", { provided: otp, stored: otpRecord.otp_code });
+    
     if (otpRecord.otp_code !== otp) {
       // Increment attempts
       await supabaseAdmin
@@ -74,10 +88,13 @@ serve(async (req) => {
         .update({ attempts: otpRecord.attempts + 1 })
         .eq("id", otpRecord.id);
 
+      const remaining = 5 - (otpRecord.attempts + 1);
+      console.error("Incorrect OTP. Attempts remaining:", remaining);
+      
       return new Response(
         JSON.stringify({ 
-          error: "Incorrect OTP",
-          attemptsRemaining: 5 - (otpRecord.attempts + 1)
+          error: `Incorrect OTP. ${remaining} attempts remaining.`,
+          attemptsRemaining: remaining
         }),
         {
           headers: { ...corsHeaders, "Content-Type": "application/json" },

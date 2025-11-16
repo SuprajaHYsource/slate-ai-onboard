@@ -63,14 +63,34 @@ const VerifyOTP = () => {
         });
         navigate("/signin");
       }
-    } catch (error: any) {
-      console.error("Error verifying OTP:", error);
-      toast({
-        title: "Error",
-        description: error.message || "Invalid OTP. Please try again.",
-        variant: "destructive",
-      });
-    } finally {
+      } catch (error: any) {
+        console.error("Error verifying OTP:", error);
+        
+        // Parse error message from response
+        let errorMessage = "Invalid OTP. Please try again.";
+        
+        if (error?.message) {
+          errorMessage = error.message;
+        }
+        
+        // Check if it's a response with error details
+        if (error?.context?.body) {
+          try {
+            const errorBody = JSON.parse(error.context.body);
+            if (errorBody.error) {
+              errorMessage = errorBody.error;
+            }
+          } catch (e) {
+            // Keep default error message
+          }
+        }
+
+        toast({
+          title: "Verification Failed",
+          description: errorMessage,
+          variant: "destructive",
+        });
+      } finally {
       setLoading(false);
     }
   };
