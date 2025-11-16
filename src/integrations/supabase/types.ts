@@ -14,6 +14,69 @@ export type Database = {
   }
   public: {
     Tables: {
+      activity_logs: {
+        Row: {
+          action_type: Database["public"]["Enums"]["action_type"]
+          created_at: string | null
+          description: string
+          id: string
+          ip_address: string | null
+          metadata: Json | null
+          performed_by: string | null
+          user_id: string | null
+        }
+        Insert: {
+          action_type: Database["public"]["Enums"]["action_type"]
+          created_at?: string | null
+          description: string
+          id?: string
+          ip_address?: string | null
+          metadata?: Json | null
+          performed_by?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          action_type?: Database["public"]["Enums"]["action_type"]
+          created_at?: string | null
+          description?: string
+          id?: string
+          ip_address?: string | null
+          metadata?: Json | null
+          performed_by?: string | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
+      custom_roles: {
+        Row: {
+          created_at: string | null
+          created_by: string | null
+          description: string | null
+          id: string
+          is_active: boolean | null
+          name: string
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          is_active?: boolean | null
+          name: string
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          is_active?: boolean | null
+          name?: string
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       otp_verifications: {
         Row: {
           attempts: number | null
@@ -44,35 +107,146 @@ export type Database = {
         }
         Relationships: []
       }
+      permissions: {
+        Row: {
+          action: string
+          description: string | null
+          id: string
+          module: string
+        }
+        Insert: {
+          action: string
+          description?: string | null
+          id?: string
+          module: string
+        }
+        Update: {
+          action?: string
+          description?: string | null
+          id?: string
+          module?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
+          address: string | null
+          contact_number: string | null
           created_at: string
+          date_of_birth: string | null
           email: string
+          email_verified: boolean | null
           full_name: string
+          gender: string | null
           id: string
+          is_active: boolean | null
           is_sso: boolean | null
+          last_sign_in: string | null
           password_set: boolean | null
+          profile_picture_url: string | null
+          signup_method: string | null
           updated_at: string
           user_id: string
         }
         Insert: {
+          address?: string | null
+          contact_number?: string | null
           created_at?: string
+          date_of_birth?: string | null
           email: string
+          email_verified?: boolean | null
           full_name: string
+          gender?: string | null
           id?: string
+          is_active?: boolean | null
           is_sso?: boolean | null
+          last_sign_in?: string | null
           password_set?: boolean | null
+          profile_picture_url?: string | null
+          signup_method?: string | null
           updated_at?: string
           user_id: string
         }
         Update: {
+          address?: string | null
+          contact_number?: string | null
           created_at?: string
+          date_of_birth?: string | null
           email?: string
+          email_verified?: boolean | null
           full_name?: string
+          gender?: string | null
           id?: string
+          is_active?: boolean | null
           is_sso?: boolean | null
+          last_sign_in?: string | null
           password_set?: boolean | null
+          profile_picture_url?: string | null
+          signup_method?: string | null
           updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      role_permissions: {
+        Row: {
+          created_at: string | null
+          custom_role_id: string | null
+          id: string
+          permission_id: string
+          role: Database["public"]["Enums"]["app_role"] | null
+        }
+        Insert: {
+          created_at?: string | null
+          custom_role_id?: string | null
+          id?: string
+          permission_id: string
+          role?: Database["public"]["Enums"]["app_role"] | null
+        }
+        Update: {
+          created_at?: string | null
+          custom_role_id?: string | null
+          id?: string
+          permission_id?: string
+          role?: Database["public"]["Enums"]["app_role"] | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "role_permissions_custom_role_id_fkey"
+            columns: ["custom_role_id"]
+            isOneToOne: false
+            referencedRelation: "custom_roles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "role_permissions_permission_id_fkey"
+            columns: ["permission_id"]
+            isOneToOne: false
+            referencedRelation: "permissions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      user_roles: {
+        Row: {
+          assigned_at: string | null
+          assigned_by: string | null
+          id: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Insert: {
+          assigned_at?: string | null
+          assigned_by?: string | null
+          id?: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Update: {
+          assigned_at?: string | null
+          assigned_by?: string | null
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
           user_id?: string
         }
         Relationships: []
@@ -83,9 +257,37 @@ export type Database = {
     }
     Functions: {
       clean_expired_otps: { Args: never; Returns: undefined }
+      has_permission: {
+        Args: { _action: string; _module: string; _user_id: string }
+        Returns: boolean
+      }
+      has_role: {
+        Args: {
+          _role: Database["public"]["Enums"]["app_role"]
+          _user_id: string
+        }
+        Returns: boolean
+      }
+      is_admin: { Args: { _user_id: string }; Returns: boolean }
     }
     Enums: {
-      [_ in never]: never
+      action_type:
+        | "login"
+        | "logout"
+        | "failed_login"
+        | "signup"
+        | "user_created"
+        | "user_updated"
+        | "user_deleted"
+        | "role_assigned"
+        | "role_changed"
+        | "permission_updated"
+        | "profile_updated"
+        | "email_changed"
+        | "password_changed"
+        | "status_changed"
+        | "password_set"
+      app_role: "super_admin" | "admin" | "hr" | "manager" | "employee"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -212,6 +414,25 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      action_type: [
+        "login",
+        "logout",
+        "failed_login",
+        "signup",
+        "user_created",
+        "user_updated",
+        "user_deleted",
+        "role_assigned",
+        "role_changed",
+        "permission_updated",
+        "profile_updated",
+        "email_changed",
+        "password_changed",
+        "status_changed",
+        "password_set",
+      ],
+      app_role: ["super_admin", "admin", "hr", "manager", "employee"],
+    },
   },
 } as const
