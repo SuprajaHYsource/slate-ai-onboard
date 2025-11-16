@@ -92,45 +92,81 @@ serve(async (req) => {
       .update({ verified: true })
       .eq("id", otpRecord.id);
 
-    // Create user account
-    const { data: authData, error: signUpError } = await supabaseAdmin.auth.admin.createUser({
-      email,
-      password,
-      email_confirm: true,
-      user_metadata: {
-        full_name: fullName,
-      },
-    });
+    // Check if user already exists
+    const { data: existingUser } = await supabaseAdmin.auth.admin.listUsers();
+    const userExists = existingUser?.users?.find((u) => u.email === email);
 
-    if (signUpError) {
-      console.error("Error creating user:", signUpError);
-      throw new Error("Failed to create user account");
+    let userId: string;
+
+    if (userExists) {
+      // User exists - update their password
+      console.log("User exists, updating password:", email);
+      
+      const { data: updateData, error: updateError } = await supabaseAdmin.auth.admin.updateUserById(
+        userExists.id,
+        {
+          password: password,
+          email_confirm: true,
+          user_metadata: {
+            full_name: fullName,
+          },
+        }
+      );
+
+      if (updateError) {
+        console.error("Error updating user:", updateError);
+        throw new Error("Failed to update user account");
+      }
+
+      userId = userExists.id;
+    } else {
+      // Create new user account
+      const { data: authData, error: signUpError } = await supabaseAdmin.auth.admin.createUser({
+        email,
+        password,
+        email_confirm: true,
+        user_metadata: {
+          full_name: fullName,
+        },
+      });
+
+      if (signUpError) {
+        console.error("Error creating user:", signUpError);
+        throw new Error("Failed to create user account");
+      }
+
+      userId = authData.user.id;
     }
 
-    // Create profile
+    // Upsert profile (insert or update if exists)
     const { error: profileError } = await supabaseAdmin
       .from("profiles")
-      .insert({
-        user_id: authData.user.id,
+      .upsert({
+        user_id: userId,
         full_name: fullName,
         email,
         signup_method: "manual",
         is_active: true,
         password_set: true,
         email_verified: true,
+      }, {
+        onConflict: "user_id"
       });
 
     if (profileError) {
-      console.error("Error creating profile:", profileError);
-      throw new Error("Failed to create profile");
+      console.error("Error upserting profile:", profileError);
+      throw new Error("Failed to create/update profile");
     }
 
-    // Assign default employee role
+    // Assign default employee role (ignore if already exists)
     const { error: roleError } = await supabaseAdmin
       .from("user_roles")
-      .insert({
-        user_id: authData.user.id,
+      .upsert({
+        user_id: userId,
         role: "employee",
+      }, {
+        onConflict: "user_id,role",
+        ignoreDuplicates: true
       });
 
     if (roleError) {
@@ -139,20 +175,20 @@ serve(async (req) => {
 
     // Log signup activity
     await supabaseAdmin.from("activity_logs").insert({
-      user_id: authData.user.id,
-      performed_by: authData.user.id,
+      user_id: userId,
+      performed_by: userId,
       action_type: "signup",
       description: `User signed up manually: ${email}`,
       metadata: { method: "manual", email },
     });
 
-    console.log(`User created successfully: ${email}`);
+    console.log(`User account ready: ${email}`);
 
     return new Response(
       JSON.stringify({ 
         success: true, 
         message: "Account created successfully",
-        userId: authData.user.id
+        userId: userId
       }),
       {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
