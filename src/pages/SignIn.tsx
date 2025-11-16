@@ -56,6 +56,14 @@ const SignIn = () => {
       navigate("/dashboard");
     } catch (error: any) {
       console.error("Error signing in:", error);
+      
+      // Log failed login
+      await supabase.from("activity_logs").insert({
+        action_type: "failed_login",
+        description: `Failed login attempt for ${formData.email}`,
+        metadata: { email: formData.email, error: error.message },
+      });
+
       toast({
         title: "Error",
         description: error.message || "Failed to sign in",
@@ -71,13 +79,21 @@ const SignIn = () => {
       const { error } = await supabase.auth.signInWithOAuth({
         provider,
         options: {
-          redirectTo: `${window.location.origin}/profile`,
+          redirectTo: `${window.location.origin}/dashboard`,
         },
       });
 
       if (error) throw error;
     } catch (error: any) {
       console.error(`Error with ${provider} sign in:`, error);
+      
+      // Log failed login
+      await supabase.from("activity_logs").insert({
+        action_type: "failed_login",
+        description: `Failed SSO login via ${provider}: ${error.message}`,
+        metadata: { method: provider, error: error.message },
+      });
+
       toast({
         title: "Error",
         description: `Failed to sign in with ${provider}`,

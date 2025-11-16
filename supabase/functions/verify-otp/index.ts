@@ -114,13 +114,37 @@ serve(async (req) => {
         user_id: authData.user.id,
         full_name: fullName,
         email,
-        is_sso: false,
+        signup_method: "manual",
+        is_active: true,
         password_set: true,
+        email_verified: true,
       });
 
     if (profileError) {
       console.error("Error creating profile:", profileError);
+      throw new Error("Failed to create profile");
     }
+
+    // Assign default employee role
+    const { error: roleError } = await supabaseAdmin
+      .from("user_roles")
+      .insert({
+        user_id: authData.user.id,
+        role: "employee",
+      });
+
+    if (roleError) {
+      console.error("Error assigning role:", roleError);
+    }
+
+    // Log signup activity
+    await supabaseAdmin.from("activity_logs").insert({
+      user_id: authData.user.id,
+      performed_by: authData.user.id,
+      action_type: "signup",
+      description: `User signed up manually: ${email}`,
+      metadata: { method: "manual", email },
+    });
 
     console.log(`User created successfully: ${email}`);
 
