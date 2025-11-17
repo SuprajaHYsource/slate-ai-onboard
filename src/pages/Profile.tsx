@@ -19,6 +19,7 @@ import {
   CheckCircle2,
   AlertCircle,
 } from "lucide-react";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useToast } from "@/hooks/use-toast";
 import EditProfileDialog from "@/components/profile/EditProfileDialog";
 import SetPasswordDialog from "@/components/profile/SetPasswordDialog";
@@ -254,9 +255,12 @@ export default function Profile() {
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="flex items-center gap-4">
-              <div className="h-16 w-16 rounded-full bg-primary/10 flex items-center justify-center text-2xl font-bold text-primary">
-                {profile.full_name.charAt(0).toUpperCase()}
-              </div>
+              <Avatar className="h-16 w-16">
+                <AvatarImage src={profile.profile_picture_url || undefined} />
+                <AvatarFallback className="bg-primary/10 text-primary text-2xl font-bold">
+                  {profile.full_name.charAt(0).toUpperCase()}
+                </AvatarFallback>
+              </Avatar>
               <div>
                 <p className="font-semibold text-lg">{profile.full_name}</p>
                 <div className="flex items-center gap-2 mt-1">
