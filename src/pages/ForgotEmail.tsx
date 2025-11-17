@@ -25,19 +25,18 @@ const ForgotEmail = () => {
     setFoundEmail(null);
 
     try {
-      let query = supabase.from("profiles").select("email");
+      const searchValue = searchBy === "phone" ? formData.contactNumber : formData.fullName;
 
-      if (searchBy === "phone" && formData.contactNumber) {
-        query = query.eq("contact_number", formData.contactNumber);
-      } else if (searchBy === "name" && formData.fullName) {
-        query = query.ilike("full_name", `%${formData.fullName}%`);
-      }
-
-      const { data, error } = await query.limit(1).maybeSingle();
+      const { data, error } = await supabase.functions.invoke("forgot-email", {
+        body: {
+          searchBy,
+          value: searchValue,
+        },
+      });
 
       if (error) throw error;
 
-      if (data && data.email) {
+      if (data?.email) {
         setFoundEmail(data.email);
         toast({
           title: "Email Found",
