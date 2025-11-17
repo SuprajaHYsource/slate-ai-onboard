@@ -78,7 +78,13 @@ export default function AddUser() {
         }
       );
 
-      if (authError) throw authError;
+      if (authError) {
+        // Handle specific error cases
+        if (authError.message?.includes("already exists") || authData?.error?.includes("already exists")) {
+          throw new Error("A user with this email address already exists. Please use a different email.");
+        }
+        throw authError;
+      }
 
       const newUserId = authData.user.id;
 
