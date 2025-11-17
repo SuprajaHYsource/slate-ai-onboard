@@ -36,7 +36,7 @@ serve(async (req) => {
       .eq("verified", false);
 
     // Insert new OTP
-    const expiresAt = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
+    const expiresAt = new Date(Date.now() + 2 * 60 * 1000); // 2 minutes
     const { error: insertError } = await supabaseAdmin
       .from("otp_verifications")
       .insert({
@@ -77,7 +77,7 @@ serve(async (req) => {
           <div style="background-color: #f3f4f6; padding: 20px; text-align: center; border-radius: 8px; margin: 20px 0;">
             <h1 style="color: #1e40af; font-size: 36px; letter-spacing: 8px; margin: 0;">${otpCode}</h1>
           </div>
-          <p>This code is valid for <strong>10 minutes</strong>.</p>
+          <p>This code is valid for <strong>2 minutes</strong>.</p>
           <p>If you did not request this, please ignore this email.</p>
           <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 30px 0;">
           <p style="color: #6b7280; font-size: 14px;">
