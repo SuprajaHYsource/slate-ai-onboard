@@ -31,7 +31,7 @@ serve(async (req) => {
       .eq("verified", false)
       .order("created_at", { ascending: false })
       .limit(1)
-      .single();
+      .maybeSingle();
 
     if (fetchError || !otpRecord) {
       console.error("OTP not found for email:", email, fetchError);
