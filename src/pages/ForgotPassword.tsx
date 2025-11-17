@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -6,42 +6,195 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
-import { Mail, ArrowLeft } from "lucide-react";
+import { Mail, ArrowLeft, Eye, EyeOff } from "lucide-react";
 
 const ForgotPassword = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
   const [email, setEmail] = useState("");
-  const [emailSent, setEmailSent] = useState(false);
+  const [step, setStep] = useState<"email" | "otp" | "password">("email");
+  const [otp, setOtp] = useState("");
+  const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [resendCooldown, setResendCooldown] = useState(0);
 
-  const handleResetPassword = async (e: React.FormEvent) => {
+  const handleSendOTP = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
 
     try {
-      const { error } = await supabase.auth.resetPasswordForEmail(email, {
-        redirectTo: `${window.location.origin}/reset-password`,
+      const { data, error } = await supabase.functions.invoke("send-otp", {
+        body: { email },
       });
 
       if (error) throw error;
 
-      setEmailSent(true);
+      setStep("otp");
+      setResendCooldown(60);
       toast({
         title: "Success",
-        description: "Password reset link sent to your email!",
+        description: "OTP sent to your email!",
       });
     } catch (error: any) {
-      console.error("Error sending reset email:", error);
+      console.error("Error sending OTP:", error);
       toast({
         title: "Error",
-        description: error.message || "Failed to send reset email",
+        description: error.message || "Failed to send OTP",
         variant: "destructive",
       });
     } finally {
       setLoading(false);
     }
   };
+
+  const handleVerifyOTP = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (otp.length !== 6) {
+      toast({
+        title: "Invalid OTP",
+        description: "Please enter a valid 6-digit OTP",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setLoading(true);
+
+    try {
+      // Verify OTP from database
+      const { data: otpRecord, error: fetchError } = await supabase
+        .from("otp_verifications")
+        .select("*")
+        .eq("email", email)
+        .eq("otp_code", otp)
+        .eq("verified", false)
+        .single();
+
+      if (fetchError || !otpRecord) {
+        throw new Error("Invalid or expired OTP");
+      }
+
+      // Check if OTP is expired
+      if (new Date(otpRecord.expires_at) < new Date()) {
+        throw new Error("OTP has expired");
+      }
+
+      // Check attempts
+      if (otpRecord.attempts >= 5) {
+        throw new Error("Maximum verification attempts exceeded");
+      }
+
+      // Mark OTP as verified
+      const { error: updateError } = await supabase
+        .from("otp_verifications")
+        .update({ verified: true })
+        .eq("id", otpRecord.id);
+
+      if (updateError) throw updateError;
+
+      setStep("password");
+      toast({
+        title: "Success",
+        description: "OTP verified! Now set your new password.",
+      });
+    } catch (error: any) {
+      console.error("Error verifying OTP:", error);
+      toast({
+        title: "Error",
+        description: error.message || "Failed to verify OTP",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleUpdatePassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+
+    if (password !== confirmPassword) {
+      toast({
+        title: "Error",
+        description: "Passwords do not match",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (password.length < 8) {
+      toast({
+        title: "Error",
+        description: "Password must be at least 8 characters long",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setLoading(true);
+
+    try {
+      const { data, error } = await supabase.functions.invoke("reset-password-otp", {
+        body: { email, password },
+      });
+
+      if (error) throw error;
+
+      toast({
+        title: "Success",
+        description: "Password updated successfully!",
+      });
+
+      navigate("/signin");
+    } catch (error: any) {
+      console.error("Error updating password:", error);
+      toast({
+        title: "Error",
+        description: error.message || "Failed to update password",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleResendOTP = async () => {
+    if (resendCooldown > 0) return;
+    
+    setLoading(true);
+    try {
+      const { error } = await supabase.functions.invoke("send-otp", {
+        body: { email },
+      });
+
+      if (error) throw error;
+
+      setResendCooldown(60);
+      toast({
+        title: "Success",
+        description: "OTP resent successfully!",
+      });
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to resend OTP",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Cooldown timer
+  useEffect(() => {
+    if (resendCooldown > 0) {
+      const timer = setTimeout(() => setResendCooldown(resendCooldown - 1), 1000);
+      return () => clearTimeout(timer);
+    }
+  }, [resendCooldown]);
 
   return (
     <div className="min-h-screen gradient-hero flex items-center justify-center p-4">
@@ -56,16 +209,20 @@ const ForgotPassword = () => {
             <ArrowLeft className="w-4 h-4 mr-2" />
             Back to Sign In
           </Button>
-          <CardTitle className="text-2xl font-bold">Forgot Password?</CardTitle>
+          <CardTitle className="text-2xl font-bold">
+            {step === "email" && "Forgot Password?"}
+            {step === "otp" && "Verify OTP"}
+            {step === "password" && "Set New Password"}
+          </CardTitle>
           <CardDescription>
-            {emailSent
-              ? "Check your email for the password reset link"
-              : "Enter your email address and we'll send you a link to reset your password"}
+            {step === "email" && "Enter your email address to receive an OTP"}
+            {step === "otp" && "Enter the 6-digit OTP sent to your email"}
+            {step === "password" && "Create your new password"}
           </CardDescription>
         </CardHeader>
         <CardContent>
-          {!emailSent ? (
-            <form onSubmit={handleResetPassword} className="space-y-4">
+          {step === "email" && (
+            <form onSubmit={handleSendOTP} className="space-y-4">
               <div className="space-y-2">
                 <Label htmlFor="email">Email Address</Label>
                 <div className="relative">
@@ -84,7 +241,7 @@ const ForgotPassword = () => {
               </div>
 
               <Button type="submit" className="w-full" disabled={loading}>
-                {loading ? "Sending..." : "Send Reset Link"}
+                {loading ? "Sending..." : "Send OTP"}
               </Button>
 
               <div className="text-center text-sm">
@@ -97,36 +254,106 @@ const ForgotPassword = () => {
                 </Button>
               </div>
             </form>
-          ) : (
-            <div className="space-y-4">
-              <div className="text-center p-4 bg-muted rounded-lg">
+          )}
+
+          {step === "otp" && (
+            <form onSubmit={handleVerifyOTP} className="space-y-4">
+              <div className="text-center p-4 bg-muted rounded-lg mb-4">
                 <p className="text-sm text-muted-foreground">
-                  We've sent a password reset link to <strong>{email}</strong>
-                </p>
-                <p className="text-sm text-muted-foreground mt-2">
-                  Please check your inbox and click the link to reset your password.
+                  OTP sent to <strong>{email}</strong>
                 </p>
               </div>
 
-              <Button
-                variant="outline"
-                className="w-full"
-                onClick={() => {
-                  setEmailSent(false);
-                  setEmail("");
-                }}
-              >
-                Send to a different email
+              <div className="space-y-2">
+                <Label htmlFor="otp">Enter OTP</Label>
+                <Input
+                  id="otp"
+                  type="text"
+                  placeholder="000000"
+                  maxLength={6}
+                  value={otp}
+                  onChange={(e) => setOtp(e.target.value.replace(/\D/g, ""))}
+                  className="text-center text-2xl tracking-widest"
+                  required
+                />
+              </div>
+
+              <Button type="submit" className="w-full" disabled={loading}>
+                {loading ? "Verifying..." : "Verify OTP"}
               </Button>
 
-              <Button
-                variant="ghost"
-                className="w-full"
-                onClick={() => navigate("/signin")}
-              >
-                Back to Sign In
+              <div className="flex justify-between items-center text-sm">
+                <Button
+                  type="button"
+                  variant="link"
+                  className="text-primary p-0"
+                  onClick={() => setStep("email")}
+                >
+                  Change Email
+                </Button>
+                <Button
+                  type="button"
+                  variant="link"
+                  className="text-primary p-0"
+                  onClick={handleResendOTP}
+                  disabled={resendCooldown > 0 || loading}
+                >
+                  {resendCooldown > 0 ? `Resend in ${resendCooldown}s` : "Resend OTP"}
+                </Button>
+              </div>
+            </form>
+          )}
+
+          {step === "password" && (
+            <form onSubmit={handleUpdatePassword} className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="password">New Password</Label>
+                <div className="relative">
+                  <Input
+                    id="password"
+                    type={showPassword ? "text" : "password"}
+                    placeholder="Enter new password"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    required
+                    minLength={8}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-3 top-3 text-muted-foreground hover:text-foreground"
+                  >
+                    {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  </button>
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="confirmPassword">Confirm Password</Label>
+                <div className="relative">
+                  <Input
+                    id="confirmPassword"
+                    type={showConfirmPassword ? "text" : "password"}
+                    placeholder="Confirm new password"
+                    value={confirmPassword}
+                    onChange={(e) => setConfirmPassword(e.target.value)}
+                    required
+                    minLength={8}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                    className="absolute right-3 top-3 text-muted-foreground hover:text-foreground"
+                  >
+                    {showConfirmPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  </button>
+                </div>
+              </div>
+
+              <Button type="submit" className="w-full" disabled={loading}>
+                {loading ? "Updating..." : "Update Password"}
               </Button>
-            </div>
+            </form>
           )}
         </CardContent>
       </Card>

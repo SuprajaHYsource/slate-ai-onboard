@@ -8,3 +8,9 @@ verify_jwt = false
 
 [functions.create-user]
 verify_jwt = true
+
+[functions.reset-password-otp]
+verify_jwt = false
+
+[functions.forgot-email]
+verify_jwt = false
