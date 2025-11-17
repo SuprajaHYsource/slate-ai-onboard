@@ -229,20 +229,42 @@ const SignIn = () => {
               </div>
             </div>
 
+            <div className="flex justify-end">
+              <Button
+                type="button"
+                variant="link"
+                className="p-0 h-auto text-sm"
+                onClick={() => navigate("/forgot-password")}
+              >
+                Forgot password?
+              </Button>
+            </div>
+
             <Button type="submit" className="w-full" disabled={loading}>
               {loading ? "Signing In..." : "Sign In"}
             </Button>
           </form>
 
-          <div className="text-center text-sm">
-            <span className="text-muted-foreground">Don't have an account? </span>
-            <Button
-              variant="link"
-              className="p-0 h-auto font-normal"
-              onClick={() => navigate("/signup")}
-            >
-              Sign Up
-            </Button>
+          <div className="text-center text-sm space-y-2">
+            <div>
+              <span className="text-muted-foreground">Don't have an account? </span>
+              <Button
+                variant="link"
+                className="p-0 h-auto font-normal"
+                onClick={() => navigate("/signup")}
+              >
+                Sign Up
+              </Button>
+            </div>
+            <div>
+              <Button
+                variant="link"
+                className="p-0 h-auto text-sm text-muted-foreground"
+                onClick={() => navigate("/forgot-email")}
+              >
+                Forgot your email address?
+              </Button>
+            </div>
           </div>
         </CardContent>
       </Card>
