@@ -50,11 +50,22 @@ serve(async (req) => {
     });
   } catch (error: any) {
     console.error("Error in create-user function:", error);
+    
+    // Handle specific error cases
+    let statusCode = 400;
+    let errorMessage = error.message || "Failed to create user";
+    
+    // Check if it's a duplicate email error
+    if (error.code === "email_exists" || error.message?.includes("already been registered")) {
+      statusCode = 409; // Conflict status code
+      errorMessage = "A user with this email address already exists";
+    }
+    
     return new Response(
-      JSON.stringify({ error: error.message || "Failed to create user" }),
+      JSON.stringify({ error: errorMessage, code: error.code }),
       {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
-        status: 400,
+        status: statusCode,
       }
     );
   }
