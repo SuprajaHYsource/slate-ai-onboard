@@ -20,6 +20,8 @@ import AddUser from "./pages/users/AddUser";
 import EditUser from "./pages/users/EditUser";
 import UserDetails from "./pages/users/UserDetails";
 import RolesList from "./pages/rbac/RolesList";
+import EditRolePermissions from "./pages/rbac/EditRolePermissions";
+import EditCustomRolePermissions from "./pages/rbac/EditCustomRolePermissions";
 import ActivityLogs from "./pages/ActivityLogs";
 
 const queryClient = new QueryClient();
@@ -49,6 +51,8 @@ const App = () => (
             <Route path="/users/edit/:userId" element={<EditUser />} />
             <Route path="/users/:userId" element={<UserDetails />} />
             <Route path="/rbac" element={<RolesList />} />
+            <Route path="/rbac/edit/:role" element={<EditRolePermissions />} />
+            <Route path="/rbac/edit-custom/:id" element={<EditCustomRolePermissions />} />
             <Route path="/activity-logs" element={<ActivityLogs />} />
           </Route>
           
