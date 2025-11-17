@@ -148,7 +148,11 @@ export default function Profile() {
       },
     };
 
-    return methods[profile?.signup_method || "manual"];
+    return methods[profile?.signup_method || "manual"] || {
+      label: "Account created",
+      icon: "✉️",
+      color: "bg-blue-500/10 text-blue-500",
+    };
   };
 
   const getRoleBadgeColor = (role: string) => {
