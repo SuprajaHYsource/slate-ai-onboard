@@ -33,7 +33,7 @@ const ForgotPassword = () => {
       if (error) throw error;
 
       setStep("otp");
-      setResendCooldown(60);
+      setResendCooldown(120);
       toast({
         title: "Success",
         description: "OTP sent to your email!",
@@ -65,36 +65,16 @@ const ForgotPassword = () => {
     setLoading(true);
 
     try {
-      // Verify OTP from database
-      const { data: otpRecord, error: fetchError } = await supabase
-        .from("otp_verifications")
-        .select("*")
-        .eq("email", email)
-        .eq("otp_code", otp)
-        .eq("verified", false)
-        .single();
+      // Verify OTP via edge function (avoids RLS issues)
+      const { data, error } = await supabase.functions.invoke("verify-otp-forgot", {
+        body: { email, otp },
+      });
 
-      if (fetchError || !otpRecord) {
-        throw new Error("Invalid or expired OTP");
+      if (error || !data?.success) {
+        throw new Error((data as any)?.error || (error as any)?.message || "Invalid or expired OTP");
       }
 
-      // Check if OTP is expired
-      if (new Date(otpRecord.expires_at) < new Date()) {
-        throw new Error("OTP has expired");
-      }
-
-      // Check attempts
-      if (otpRecord.attempts >= 5) {
-        throw new Error("Maximum verification attempts exceeded");
-      }
-
-      // Mark OTP as verified
-      const { error: updateError } = await supabase
-        .from("otp_verifications")
-        .update({ verified: true })
-        .eq("id", otpRecord.id);
-
-      if (updateError) throw updateError;
+      
 
       setStep("password");
       toast({
@@ -138,7 +118,7 @@ const ForgotPassword = () => {
 
     try {
       const { data, error } = await supabase.functions.invoke("reset-password-otp", {
-        body: { email, password },
+        body: { email, otp, password },
       });
 
       if (error) throw error;
@@ -172,7 +152,7 @@ const ForgotPassword = () => {
 
       if (error) throw error;
 
-      setResendCooldown(60);
+      setResendCooldown(120);
       toast({
         title: "Success",
         description: "OTP resent successfully!",

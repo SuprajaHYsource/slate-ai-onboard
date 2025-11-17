@@ -12,10 +12,10 @@ serve(async (req) => {
   }
 
   try {
-    const { email, password } = await req.json();
+    const { email, otp, password } = await req.json();
     
-    if (!email || !password) {
-      throw new Error("Email and password are required");
+    if (!email || !otp || !password) {
+      throw new Error("Email, OTP and password are required");
     }
 
     if (password.length < 8) {
@@ -28,7 +28,49 @@ serve(async (req) => {
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? ""
     );
 
-    // Get user by email
+    // Validate OTP for this email
+    const { data: otpRecord } = await supabaseAdmin
+      .from("otp_verifications")
+      .select("*")
+      .eq("email", email)
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    if (!otpRecord) {
+      throw new Error("Invalid or expired OTP");
+    }
+
+    const now = new Date();
+    const expiresAt = new Date(otpRecord.expires_at);
+
+    if (expiresAt < now) {
+      throw new Error("OTP has expired. Please request a new one.");
+    }
+
+    if ((otpRecord.attempts ?? 0) >= 5) {
+      throw new Error("Too many failed attempts. Please request a new OTP.");
+    }
+
+    if (otpRecord.otp_code !== String(otp)) {
+      await supabaseAdmin
+        .from("otp_verifications")
+        .update({ attempts: (otpRecord.attempts ?? 0) + 1 })
+        .eq("id", otpRecord.id);
+      throw new Error("Invalid OTP");
+    }
+
+    // Mark as verified (idempotent)
+    if (!otpRecord.verified) {
+      await supabaseAdmin
+        .from("otp_verifications")
+        .update({ verified: true })
+        .eq("id", otpRecord.id);
+    }
+
+    // Validate OTP for this email
+
+    // After OTP validation, get user by email
     const { data: { users }, error: getUserError } = await supabaseAdmin.auth.admin.listUsers();
     
     if (getUserError) {
