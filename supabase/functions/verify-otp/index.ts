@@ -114,10 +114,24 @@ serve(async (req) => {
     const userExists = existingUser?.users?.find((u) => u.email === email);
 
     let userId: string;
+    let profileFullName = fullName;
 
     if (userExists) {
       // User exists - update their password
       console.log("User exists, updating password:", email);
+      
+      // Fetch existing profile to preserve full_name if not provided
+      if (!fullName) {
+        const { data: existingProfile } = await supabaseAdmin
+          .from("profiles")
+          .select("full_name")
+          .eq("user_id", userExists.id)
+          .maybeSingle();
+        
+        if (existingProfile?.full_name) {
+          profileFullName = existingProfile.full_name;
+        }
+      }
       
       const { data: updateData, error: updateError } = await supabaseAdmin.auth.admin.updateUserById(
         userExists.id,
@@ -125,7 +139,7 @@ serve(async (req) => {
           password: password,
           email_confirm: true,
           user_metadata: {
-            full_name: fullName,
+            full_name: profileFullName || fullName,
           },
         }
       );
@@ -137,7 +151,11 @@ serve(async (req) => {
 
       userId = userExists.id;
     } else {
-      // Create new user account
+      // Create new user account - fullName is required
+      if (!fullName) {
+        throw new Error("Full name is required for new user registration");
+      }
+      
       const { data: authData, error: signUpError } = await supabaseAdmin.auth.admin.createUser({
         email,
         password,
@@ -153,6 +171,7 @@ serve(async (req) => {
       }
 
       userId = authData.user.id;
+      profileFullName = fullName;
     }
 
     // Upsert profile (insert or update if exists)
@@ -160,7 +179,7 @@ serve(async (req) => {
       .from("profiles")
       .upsert({
         user_id: userId,
-        full_name: fullName,
+        full_name: profileFullName,
         email,
         signup_method: "manual",
         is_active: true,
