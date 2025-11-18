@@ -63,11 +63,14 @@ export default function ChangeEmailDialog({
   const handleVerifyOldEmail = async () => {
     setLoading(true);
     try {
-      const { error } = await supabase.functions.invoke("verify-otp", {
+      const { data, error } = await supabase.functions.invoke("verify-otp", {
         body: { email: currentEmail, otp: oldOtp },
       });
 
-      if (error) throw error;
+      if (error) {
+        const errorBody = error?.context?.body ? JSON.parse(error.context.body) : null;
+        throw new Error(errorBody?.error || error.message || "Invalid OTP. Please check and try again.");
+      }
 
       // Send OTP to new email
       const { error: sendError } = await supabase.functions.invoke("send-otp", {
@@ -78,14 +81,15 @@ export default function ChangeEmailDialog({
 
       toast({
         title: "Verified",
-        description: "Verification code sent to your new email",
+        description: "Verification code sent to your new email. Check your inbox!",
       });
 
+      setNewOtp(""); // Clear the new OTP field
       setStep("verify-new");
     } catch (error: any) {
       toast({
-        title: "Error",
-        description: error.message,
+        title: "Verification Failed",
+        description: error.message || "Invalid OTP. Please check your email and try again.",
         variant: "destructive",
       });
     } finally {
@@ -96,11 +100,14 @@ export default function ChangeEmailDialog({
   const handleVerifyNewEmail = async () => {
     setLoading(true);
     try {
-      const { error: verifyError } = await supabase.functions.invoke("verify-otp", {
+      const { data, error: verifyError } = await supabase.functions.invoke("verify-otp", {
         body: { email: newEmail, otp: newOtp },
       });
 
-      if (verifyError) throw verifyError;
+      if (verifyError) {
+        const errorBody = verifyError?.context?.body ? JSON.parse(verifyError.context.body) : null;
+        throw new Error(errorBody?.error || verifyError.message || "Invalid OTP. Please check and try again.");
+      }
 
       const {
         data: { user },
@@ -146,8 +153,8 @@ export default function ChangeEmailDialog({
       setNewOtp("");
     } catch (error: any) {
       toast({
-        title: "Error",
-        description: error.message,
+        title: "Verification Failed",
+        description: error.message || "Invalid OTP. Please check your email and try again.",
         variant: "destructive",
       });
     } finally {
@@ -207,9 +214,10 @@ export default function ChangeEmailDialog({
           <div className="space-y-4">
             <div className="flex items-center gap-2 p-4 bg-muted rounded-lg">
               <Mail className="h-5 w-5 text-muted-foreground" />
-              <div>
+              <div className="flex-1">
                 <p className="text-sm font-medium">Verification code sent to:</p>
                 <p className="text-sm text-muted-foreground">{currentEmail}</p>
+                <p className="text-xs text-muted-foreground mt-1">Check your inbox and enter the 6-digit code</p>
               </div>
             </div>
 
@@ -224,6 +232,20 @@ export default function ChangeEmailDialog({
                 required
               />
             </div>
+
+            <Button
+              type="button"
+              variant="link"
+              size="sm"
+              className="w-full"
+              onClick={async () => {
+                setOldOtp("");
+                await handleSendOldEmailOtp();
+              }}
+              disabled={loading}
+            >
+              Didn't receive code? Resend OTP
+            </Button>
 
             <DialogFooter>
               <Button
@@ -248,9 +270,10 @@ export default function ChangeEmailDialog({
           <div className="space-y-4">
             <div className="flex items-center gap-2 p-4 bg-muted rounded-lg">
               <Mail className="h-5 w-5 text-muted-foreground" />
-              <div>
+              <div className="flex-1">
                 <p className="text-sm font-medium">Verification code sent to:</p>
                 <p className="text-sm text-muted-foreground">{newEmail}</p>
+                <p className="text-xs text-muted-foreground mt-1">Check your inbox and enter the 6-digit code</p>
               </div>
             </div>
 
@@ -265,6 +288,40 @@ export default function ChangeEmailDialog({
                 required
               />
             </div>
+
+            <Button
+              type="button"
+              variant="link"
+              size="sm"
+              className="w-full"
+              onClick={async () => {
+                setLoading(true);
+                setNewOtp("");
+                try {
+                  const { error } = await supabase.functions.invoke("send-otp", {
+                    body: { email: newEmail },
+                  });
+
+                  if (error) throw error;
+
+                  toast({
+                    title: "OTP Sent",
+                    description: "New verification code sent to your email",
+                  });
+                } catch (error: any) {
+                  toast({
+                    title: "Error",
+                    description: error.message,
+                    variant: "destructive",
+                  });
+                } finally {
+                  setLoading(false);
+                }
+              }}
+              disabled={loading}
+            >
+              Didn't receive code? Resend OTP
+            </Button>
 
             <DialogFooter>
               <Button
