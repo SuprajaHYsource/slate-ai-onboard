@@ -28,6 +28,15 @@ const SignUp = () => {
   const handleManualSignUp = async (e: React.FormEvent) => {
     e.preventDefault();
     
+    if (!formData.fullName.trim()) {
+      toast({
+        title: "Error",
+        description: "Full name is required",
+        variant: "destructive",
+      });
+      return;
+    }
+
     if (formData.password !== formData.confirmPassword) {
       toast({
         title: "Error",
