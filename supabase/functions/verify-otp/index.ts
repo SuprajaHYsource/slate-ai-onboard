@@ -18,6 +18,9 @@ serve(async (req) => {
       throw new Error("Email and OTP are required");
     }
 
+    // Check if this is a simple OTP verification (email change) or signup
+    const isSignupFlow = password !== undefined;
+
     const supabaseAdmin = createClient(
       Deno.env.get("SUPABASE_URL") ?? "",
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? ""
@@ -108,6 +111,26 @@ serve(async (req) => {
       .from("otp_verifications")
       .update({ verified: true })
       .eq("id", otpRecord.id);
+
+    // If it's just OTP verification (not signup), return success
+    if (!isSignupFlow) {
+      console.log(`OTP verified for email change: ${email}`);
+      return new Response(
+        JSON.stringify({ 
+          success: true, 
+          message: "OTP verified successfully"
+        }),
+        {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+          status: 200,
+        }
+      );
+    }
+
+    // Continue with user creation/update for signup flow
+    if (!fullName) {
+      throw new Error("Full name is required for new user registration");
+    }
 
     // Check if user already exists
     const { data: existingUser } = await supabaseAdmin.auth.admin.listUsers();
