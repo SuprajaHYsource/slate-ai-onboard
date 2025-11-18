@@ -51,6 +51,13 @@ export default function EditProfileDialog({
     address: profile?.address || "",
   });
 
+  // Calculate max date (21 years ago from today)
+  const getMaxDate = () => {
+    const today = new Date();
+    const maxDate = new Date(today.getFullYear() - 21, today.getMonth(), today.getDate());
+    return maxDate.toISOString().split('T')[0];
+  };
+
   const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
@@ -306,11 +313,12 @@ export default function EditProfileDialog({
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="date_of_birth">Date of Birth</Label>
+            <Label htmlFor="date_of_birth">Date of Birth (Must be 21+ years old)</Label>
             <Input
               id="date_of_birth"
               type="date"
               value={formData.date_of_birth}
+              max={getMaxDate()}
               onChange={(e) =>
                 setFormData({ ...formData, date_of_birth: e.target.value })
               }
