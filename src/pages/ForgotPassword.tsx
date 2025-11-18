@@ -27,7 +27,7 @@ const ForgotPassword = () => {
 
     try {
       const { data, error } = await supabase.functions.invoke("send-otp", {
-        body: { email },
+        body: { email, flow: "forgot_password" },
       });
 
       if (error) throw error;
@@ -147,7 +147,7 @@ const ForgotPassword = () => {
     setLoading(true);
     try {
       const { error } = await supabase.functions.invoke("send-otp", {
-        body: { email },
+        body: { email, flow: "forgot_password" },
       });
 
       if (error) throw error;
