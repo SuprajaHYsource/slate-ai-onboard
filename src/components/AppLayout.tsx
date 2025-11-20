@@ -38,7 +38,7 @@ export default function AppLayout() {
     // Check auth state
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (!session) {
-        navigate("/signin");
+        navigate("/auth");
       } else {
         setUser(session.user);
         fetchUserRoles(session.user.id);
@@ -49,7 +49,7 @@ export default function AppLayout() {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((_event, session) => {
       if (!session) {
-        navigate("/signin");
+        navigate("/auth");
       } else {
         setUser(session.user);
         fetchUserRoles(session.user.id);
@@ -95,7 +95,7 @@ export default function AppLayout() {
         title: "Logged out",
         description: "You have been logged out successfully",
       });
-      navigate("/signin");
+      navigate("/auth");
     } catch (error) {
       console.error("Error logging out:", error);
     }

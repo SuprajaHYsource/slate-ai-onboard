@@ -281,7 +281,7 @@ const Auth = () => {
           title: "Account Created",
           description: "Please sign in with your new account.",
         });
-        navigate("/signin");
+        navigate("/auth");
         return;
       }
 
