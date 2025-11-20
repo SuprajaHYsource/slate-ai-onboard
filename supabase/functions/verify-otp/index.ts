@@ -27,11 +27,13 @@ serve(async (req) => {
     );
 
     // Get the OTP record
+    // For signup flow with password, allow already verified OTPs
+    // For simple verification (email change), require unverified OTPs
     const { data: otpRecord, error: fetchError } = await supabaseAdmin
       .from("otp_verifications")
       .select("*")
       .eq("email", email)
-      .eq("verified", false)
+      .eq("verified", isSignupFlow ? true : false)
       .order("created_at", { ascending: false })
       .limit(1)
       .maybeSingle();
