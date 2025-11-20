@@ -41,7 +41,7 @@ const Hero = () => {
             <Button 
               size="lg" 
               className="text-lg px-8 py-6 bg-primary hover:bg-primary/90 glow-primary group"
-              onClick={() => navigate("/signup")}
+              onClick={() => navigate("/auth")}
             >
               Get Started
               <ArrowRight className="ml-2 w-5 h-5 group-hover:translate-x-1 transition-transform" />
@@ -50,7 +50,7 @@ const Hero = () => {
               size="lg" 
               variant="outline" 
               className="text-lg px-8 py-6 border-2 hover:bg-secondary/20"
-              onClick={() => navigate("/signin")}
+              onClick={() => navigate("/auth")}
             >
               Sign In
             </Button>
