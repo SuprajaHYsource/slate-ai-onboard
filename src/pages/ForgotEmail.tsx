@@ -69,7 +69,7 @@ const ForgotEmail = () => {
             variant="ghost"
             size="sm"
             className="w-fit mb-4"
-            onClick={() => navigate("/signin")}
+            onClick={() => navigate("/auth")}
           >
             <ArrowLeft className="w-4 h-4 mr-2" />
             Back to Sign In
@@ -166,7 +166,7 @@ const ForgotEmail = () => {
 
               <Button
                 className="w-full"
-                onClick={() => navigate("/signin")}
+                onClick={() => navigate("/auth")}
               >
                 Go to Sign In
               </Button>

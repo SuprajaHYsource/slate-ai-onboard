@@ -24,7 +24,7 @@ const VerifyOTP = () => {
         description: "Missing registration data. Please sign up again.",
         variant: "destructive",
       });
-      navigate("/signup");
+      navigate("/auth");
     }
   }, [email, fullName, password, navigate, toast]);
 
@@ -61,7 +61,7 @@ const VerifyOTP = () => {
           title: "Success",
           description: "Account created successfully! Please sign in.",
         });
-        navigate("/signin");
+        navigate("/auth");
       }
       } catch (error: any) {
         console.error("Error verifying OTP:", error);
@@ -128,7 +128,7 @@ const VerifyOTP = () => {
             variant="ghost"
             size="sm"
             className="w-fit mb-4"
-            onClick={() => navigate("/signup")}
+            onClick={() => navigate("/auth")}
           >
             <ArrowLeft className="w-4 h-4 mr-2" />
             Back to Sign Up
@@ -174,7 +174,7 @@ const VerifyOTP = () => {
             <Button
               variant="ghost"
               className="w-full"
-              onClick={() => navigate("/signup")}
+              onClick={() => navigate("/auth")}
             >
               Change Email
             </Button>

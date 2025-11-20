@@ -69,7 +69,7 @@ export default function Profile() {
       } = await supabase.auth.getUser();
 
       if (!user) {
-        navigate("/signin");
+        navigate("/auth");
         return;
       }
 

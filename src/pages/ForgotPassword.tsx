@@ -128,7 +128,7 @@ const ForgotPassword = () => {
         description: "Password updated successfully!",
       });
 
-      navigate("/signin");
+      navigate("/auth");
     } catch (error: any) {
       console.error("Error updating password:", error);
       toast({
@@ -184,7 +184,7 @@ const ForgotPassword = () => {
             variant="ghost"
             size="sm"
             className="w-fit mb-4"
-            onClick={() => navigate("/signin")}
+            onClick={() => navigate("/auth")}
           >
             <ArrowLeft className="w-4 h-4 mr-2" />
             Back to Sign In

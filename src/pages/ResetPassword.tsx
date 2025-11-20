@@ -84,7 +84,7 @@ const ResetPassword = () => {
         description: "Your password has been reset successfully!",
       });
 
-      navigate("/signin");
+      navigate("/auth");
     } catch (error: any) {
       console.error("Error resetting password:", error);
       toast({
