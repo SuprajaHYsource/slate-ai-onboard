@@ -172,24 +172,46 @@ const Auth = () => {
 
     setLoading(true);
     try {
-      // Just verify OTP without creating user yet
-      const { data, error } = await supabase.functions.invoke("verify-otp", {
+      // Verify OTP first
+      const { data: verifyData, error: verifyError } = await supabase.functions.invoke("verify-otp", {
         body: { 
           email: formData.email,
           otp: formData.otp,
-          // Don't pass fullName or password - just verify OTP
         },
       });
 
-      if (error) throw error;
+      if (verifyError) throw verifyError;
 
-      if (data.success) {
-        toast({
-          title: "Success",
-          description: "Email verified successfully!",
+      if (verifyData.success) {
+        // Create user account with temporary password
+        const tempPassword = `Temp${Math.random().toString(36).slice(-8)}@${Date.now()}`;
+        
+        const { data: createData, error: createError } = await supabase.functions.invoke("verify-otp", {
+          body: { 
+            email: formData.email,
+            otp: formData.otp,
+            fullName: formData.email.split('@')[0], // Use email prefix as temporary name
+            password: tempPassword,
+          },
         });
-        // Move to profile setup step
-        setStep("profile");
+
+        if (createError) throw createError;
+        if (!createData.success) throw new Error("Failed to create account");
+
+        // Sign in the user
+        const { error: signInError } = await supabase.auth.signInWithPassword({
+          email: formData.email,
+          password: tempPassword,
+        });
+
+        if (signInError) throw signInError;
+
+        toast({
+          title: "Welcome!",
+          description: "You can complete your profile in the Profile section.",
+        });
+
+        navigate("/dashboard");
       }
     } catch (error: any) {
       console.error("Error verifying OTP:", error);
@@ -343,8 +365,6 @@ const Auth = () => {
     if (step === "password" || step === "otp") {
       setStep("email");
       setFormData({ ...formData, password: "", otp: "" });
-    } else if (step === "profile") {
-      setStep("otp");
     } else {
       navigate("/");
     }
