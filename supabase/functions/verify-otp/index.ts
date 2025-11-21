@@ -44,22 +44,20 @@ serve(async (req) => {
     
     const { email, otp, fullName, password } = parsed.data;
 
-    // Check if this is a simple OTP verification (email change) or signup
-    const isSignupFlow = password !== undefined;
+    // Check if this is a signup flow (has password) or simple OTP verification (email change)
+    const isSignupFlow = password !== undefined && password !== "";
 
     const supabaseAdmin = createClient(
       Deno.env.get("SUPABASE_URL") ?? "",
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? ""
     );
 
-    // Get the OTP record
-    // For signup flow with password, allow already verified OTPs
-    // For simple verification (email change), require unverified OTPs
+    // Always look for unverified OTPs since we only verify once
     const { data: otpRecord, error: fetchError } = await supabaseAdmin
       .from("otp_verifications")
       .select("*")
       .eq("email", email)
-      .eq("verified", isSignupFlow ? true : false)
+      .eq("verified", false)
       .order("created_at", { ascending: false })
       .limit(1)
       .maybeSingle();
