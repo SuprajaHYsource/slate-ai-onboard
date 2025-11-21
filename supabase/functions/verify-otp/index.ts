@@ -44,8 +44,16 @@ serve(async (req) => {
     
     const { email, otp, fullName, password } = parsed.data;
 
-    // Check if this is a signup flow (has password) or simple OTP verification (email change)
-    const isSignupFlow = password !== undefined && password !== "";
+    // Check if this is a signup flow (has password and fullName) or simple OTP verification (email change)
+    // Must have both password AND fullName to be considered signup
+    const isSignupFlow = password && password.trim() !== "" && fullName && fullName.trim() !== "";
+
+    console.log("Flow detection:", { 
+      isSignupFlow, 
+      hasPassword: !!password, 
+      hasFullName: !!fullName,
+      email 
+    });
 
     const supabaseAdmin = createClient(
       Deno.env.get("SUPABASE_URL") ?? "",
@@ -154,9 +162,17 @@ serve(async (req) => {
     }
 
     // Continue with user creation/update for signup flow
-    if (!fullName) {
+    if (!fullName || fullName.trim() === "") {
+      console.error("Full name missing for signup flow");
       throw new Error("Full name is required for new user registration");
     }
+
+    if (!password || password.trim() === "") {
+      console.error("Password missing for signup flow");
+      throw new Error("Password is required for new user registration");
+    }
+
+    console.log("Starting user creation/update for:", email);
 
     // Check if user already exists
     const { data: existingUser } = await supabaseAdmin.auth.admin.listUsers();
@@ -216,7 +232,8 @@ serve(async (req) => {
 
       if (signUpError) {
         console.error("Error creating user:", signUpError);
-        throw new Error("Failed to create user account");
+        console.error("Error details:", JSON.stringify(signUpError, null, 2));
+        throw new Error(signUpError.message || "Failed to create user account");
       }
 
       userId = authData.user.id;
@@ -282,9 +299,20 @@ serve(async (req) => {
     );
   } catch (error) {
     console.error("Error in verify-otp function:", error);
+    console.error("Error type:", typeof error);
+    
+    if (error instanceof Error) {
+      console.error("Error message:", error.message);
+      console.error("Error stack:", error.stack);
+    }
+    
     const errorMessage = error instanceof Error ? error.message : "Unknown error occurred";
+    
     return new Response(
-      JSON.stringify({ error: errorMessage }),
+      JSON.stringify({ 
+        error: errorMessage,
+        type: typeof error
+      }),
       {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
         status: 500,
