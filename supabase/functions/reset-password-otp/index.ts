@@ -1,10 +1,19 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { z } from "https://deno.land/x/zod@v3.22.4/mod.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
+
+const ResetPasswordSchema = z.object({
+  email: z.string().email("Invalid email format").max(255),
+  otp: z.string().regex(/^\d{6}$/, "OTP must be exactly 6 digits"),
+  password: z.string()
+    .min(8, "Password must be at least 8 characters")
+    .max(100, "Password too long"),
+});
 
 serve(async (req) => {
   if (req.method === "OPTIONS") {
@@ -12,15 +21,21 @@ serve(async (req) => {
   }
 
   try {
-    const { email, otp, password } = await req.json();
+    // Validate input
+    const body = await req.json();
+    const parsed = ResetPasswordSchema.safeParse(body);
     
-    if (!email || !otp || !password) {
-      throw new Error("Email, OTP and password are required");
+    if (!parsed.success) {
+      return new Response(
+        JSON.stringify({ 
+          error: 'Invalid input', 
+          details: parsed.error.issues.map(i => i.message).join(', ')
+        }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
     }
-
-    if (password.length < 8) {
-      throw new Error("Password must be at least 8 characters long");
-    }
+    
+    const { email, otp, password } = parsed.data;
 
     // Initialize Supabase admin client
     const supabaseAdmin = createClient(

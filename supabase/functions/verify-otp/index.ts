@@ -1,10 +1,25 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { z } from "https://deno.land/x/zod@v3.22.4/mod.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
+
+const VerifyOTPSchema = z.object({
+  email: z.string().email("Invalid email format").max(255),
+  otp: z.string().regex(/^\d{6}$/, "OTP must be exactly 6 digits"),
+  fullName: z.string()
+    .min(1, "Name is required")
+    .max(100, "Name too long")
+    .regex(/^[a-zA-Z\s'-]+$/, "Name can only contain letters, spaces, hyphens, and apostrophes")
+    .optional(),
+  password: z.string()
+    .min(8, "Password must be at least 8 characters")
+    .max(100, "Password too long")
+    .optional(),
+});
 
 serve(async (req) => {
   if (req.method === "OPTIONS") {
@@ -12,11 +27,21 @@ serve(async (req) => {
   }
 
   try {
-    const { email, otp, fullName, password } = await req.json();
+    // Validate input
+    const body = await req.json();
+    const parsed = VerifyOTPSchema.safeParse(body);
     
-    if (!email || !otp) {
-      throw new Error("Email and OTP are required");
+    if (!parsed.success) {
+      return new Response(
+        JSON.stringify({ 
+          error: 'Invalid input', 
+          details: parsed.error.issues.map(i => i.message).join(', ')
+        }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
     }
+    
+    const { email, otp, fullName, password } = parsed.data;
 
     // Check if this is a simple OTP verification (email change) or signup
     const isSignupFlow = password !== undefined;
