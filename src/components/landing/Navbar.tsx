@@ -20,7 +20,7 @@ const Navbar = () => {
             <ThemeToggle />
             <Button 
               onClick={() => navigate("/auth")}
-              className="bg-primary hover:bg-primary/90"
+              className="bg-primary text-primary-foreground hover:bg-primary/90"
             >
               Get Started
             </Button>
