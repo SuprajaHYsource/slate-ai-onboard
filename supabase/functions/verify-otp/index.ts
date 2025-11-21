@@ -160,11 +160,11 @@ serve(async (req) => {
       throw new Error("Full name is required for new user registration");
     }
 
-    // Validate fullName format
-    const nameRegex = /^[a-zA-Z\s'-]+$/;
+    // Validate fullName format (allow alphanumeric for temporary names from email)
+    const nameRegex = /^[a-zA-Z0-9\s'-]+$/;
     if (!nameRegex.test(fullName.trim())) {
       console.error("Invalid full name format");
-      throw new Error("Name can only contain letters, spaces, hyphens, and apostrophes");
+      throw new Error("Name can only contain letters, numbers, spaces, hyphens, and apostrophes");
     }
 
     // Validate password for signup
