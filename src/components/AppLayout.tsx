@@ -15,6 +15,7 @@ import {
   SidebarTrigger,
 } from "@/components/ui/sidebar";
 import { NavLink } from "@/components/NavLink";
+import { ThemeToggle } from "@/components/ThemeToggle";
 import {
   LayoutDashboard,
   User as UserIcon,
@@ -200,8 +201,9 @@ export default function AppLayout() {
         </Sidebar>
 
         <main className="flex-1 overflow-auto">
-          <header className="h-14 border-b flex items-center px-4 bg-background sticky top-0 z-10">
+          <header className="h-14 border-b flex items-center justify-between px-4 bg-background sticky top-0 z-10">
             <SidebarTrigger />
+            <ThemeToggle />
           </header>
           <div className="p-6">
             <Outlet />
