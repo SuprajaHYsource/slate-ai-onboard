@@ -9,6 +9,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Mail, Lock, ArrowLeft, Eye, EyeOff, User, Calendar, ImageIcon } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Logo } from "@/components/Logo";
 
 type AuthStep = "email" | "password" | "otp" | "profile";
 
@@ -374,6 +375,9 @@ const Auth = () => {
     <div className="min-h-screen gradient-hero flex items-center justify-center p-4">
       <Card className="w-full max-w-md">
         <CardHeader className="space-y-1">
+          <div className="flex justify-center mb-4">
+            <Logo className="h-12" />
+          </div>
           <Button
             variant="ghost"
             size="sm"
