@@ -11,14 +11,15 @@ const VerifyOTPSchema = z.object({
   email: z.string().email("Invalid email format").max(255),
   otp: z.string().regex(/^\d{6}$/, "OTP must be exactly 6 digits"),
   fullName: z.string()
-    .min(1, "Name is required")
     .max(100, "Name too long")
-    .regex(/^[a-zA-Z\s'-]+$/, "Name can only contain letters, spaces, hyphens, and apostrophes")
-    .optional(),
+    .regex(/^[a-zA-Z\s'-]*$/, "Name can only contain letters, spaces, hyphens, and apostrophes")
+    .optional()
+    .or(z.literal("")),
   password: z.string()
     .min(8, "Password must be at least 8 characters")
     .max(100, "Password too long")
-    .optional(),
+    .optional()
+    .or(z.literal("")),
 });
 
 serve(async (req) => {
