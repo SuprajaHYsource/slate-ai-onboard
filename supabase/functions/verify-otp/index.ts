@@ -10,16 +10,14 @@ const corsHeaders = {
 const VerifyOTPSchema = z.object({
   email: z.string().email("Invalid email format").max(255),
   otp: z.string().regex(/^\d{6}$/, "OTP must be exactly 6 digits"),
-  fullName: z.string()
-    .max(100, "Name too long")
-    .regex(/^[a-zA-Z\s'-]*$/, "Name can only contain letters, spaces, hyphens, and apostrophes")
-    .optional()
-    .or(z.literal("")),
-  password: z.string()
-    .min(8, "Password must be at least 8 characters")
-    .max(100, "Password too long")
-    .optional()
-    .or(z.literal("")),
+  fullName: z.union([
+    z.string().min(1).max(100).regex(/^[a-zA-Z\s'-]+$/),
+    z.literal("")
+  ]).optional(),
+  password: z.union([
+    z.string().min(8).max(100),
+    z.literal("")
+  ]).optional(),
 });
 
 serve(async (req) => {
