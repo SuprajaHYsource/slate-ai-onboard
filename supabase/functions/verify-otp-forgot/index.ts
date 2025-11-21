@@ -1,10 +1,16 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { z } from "https://deno.land/x/zod@v3.22.4/mod.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
+
+const VerifyOTPForgotSchema = z.object({
+  email: z.string().email("Invalid email format").max(255),
+  otp: z.string().regex(/^\d{6}$/, "OTP must be exactly 6 digits"),
+});
 
 serve(async (req) => {
   if (req.method === "OPTIONS") {
@@ -12,11 +18,21 @@ serve(async (req) => {
   }
 
   try {
-    const { email, otp } = await req.json();
-
-    if (!email || !otp) {
-      throw new Error("Email and OTP are required");
+    // Validate input
+    const body = await req.json();
+    const parsed = VerifyOTPForgotSchema.safeParse(body);
+    
+    if (!parsed.success) {
+      return new Response(
+        JSON.stringify({ 
+          error: 'Invalid input', 
+          details: parsed.error.issues.map(i => i.message).join(', ')
+        }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
     }
+    
+    const { email, otp } = parsed.data;
 
     const supabaseAdmin = createClient(
       Deno.env.get("SUPABASE_URL") ?? "",

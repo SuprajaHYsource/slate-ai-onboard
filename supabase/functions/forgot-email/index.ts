@@ -1,9 +1,15 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { z } from "https://deno.land/x/zod@v3.22.4/mod.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
+
+const ForgotEmailSchema = z.object({
+  searchBy: z.enum(['phone', 'name']),
+  value: z.string().min(1, "Search value is required").max(255),
+});
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
@@ -11,14 +17,21 @@ Deno.serve(async (req) => {
   }
 
   try {
-    const { searchBy, value } = await req.json();
-
-    if (!searchBy || !value) {
+    // Validate input
+    const body = await req.json();
+    const parsed = ForgotEmailSchema.safeParse(body);
+    
+    if (!parsed.success) {
       return new Response(
-        JSON.stringify({ error: "Missing required fields" }),
+        JSON.stringify({ 
+          error: 'Invalid input', 
+          details: parsed.error.issues.map(i => i.message).join(', ')
+        }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
+    
+    const { searchBy, value } = parsed.data;
 
     const supabaseClient = createClient(
       Deno.env.get("SUPABASE_URL") ?? "",

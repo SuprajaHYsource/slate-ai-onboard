@@ -1,11 +1,17 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { SMTPClient } from "https://deno.land/x/denomailer@1.6.0/mod.ts";
+import { z } from "https://deno.land/x/zod@v3.22.4/mod.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
+
+const SendOTPSchema = z.object({
+  email: z.string().email("Invalid email format").max(255),
+  flow: z.enum(['signup', 'forgot_password', 'email_change']).optional(),
+});
 
 serve(async (req) => {
   if (req.method === "OPTIONS") {
@@ -13,11 +19,21 @@ serve(async (req) => {
   }
 
   try {
-    const { email, flow } = await req.json();
+    // Validate input
+    const body = await req.json();
+    const parsed = SendOTPSchema.safeParse(body);
     
-    if (!email) {
-      throw new Error("Email is required");
+    if (!parsed.success) {
+      return new Response(
+        JSON.stringify({ 
+          error: 'Invalid input', 
+          details: parsed.error.issues.map(i => i.message).join(', ')
+        }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
     }
+    
+    const { email, flow } = parsed.data;
 
     // Generate 6-digit OTP
     const otpCode = Math.floor(100000 + Math.random() * 900000).toString();
