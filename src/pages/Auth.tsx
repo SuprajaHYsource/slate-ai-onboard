@@ -173,47 +173,35 @@ const Auth = () => {
 
     setLoading(true);
     try {
-      // Verify OTP first
-      const { data: verifyData, error: verifyError } = await supabase.functions.invoke("verify-otp", {
+      // Create user account with OTP verification in a single call
+      const tempPassword = `Temp${Math.random().toString(36).slice(-8)}@${Date.now()}`;
+      
+      const { data: createData, error: createError } = await supabase.functions.invoke("verify-otp", {
         body: { 
           email: formData.email,
           otp: formData.otp,
+          fullName: formData.email.split('@')[0], // Use email prefix as temporary name
+          password: tempPassword,
         },
       });
 
-      if (verifyError) throw verifyError;
+      if (createError) throw createError;
+      if (!createData.success) throw new Error("Failed to create account");
 
-      if (verifyData.success) {
-        // Create user account with temporary password
-        const tempPassword = `Temp${Math.random().toString(36).slice(-8)}@${Date.now()}`;
-        
-        const { data: createData, error: createError } = await supabase.functions.invoke("verify-otp", {
-          body: { 
-            email: formData.email,
-            otp: formData.otp,
-            fullName: formData.email.split('@')[0], // Use email prefix as temporary name
-            password: tempPassword,
-          },
-        });
+      // Sign in the user
+      const { error: signInError } = await supabase.auth.signInWithPassword({
+        email: formData.email,
+        password: tempPassword,
+      });
 
-        if (createError) throw createError;
-        if (!createData.success) throw new Error("Failed to create account");
+      if (signInError) throw signInError;
 
-        // Sign in the user
-        const { error: signInError } = await supabase.auth.signInWithPassword({
-          email: formData.email,
-          password: tempPassword,
-        });
+      toast({
+        title: "Welcome!",
+        description: "You can complete your profile in the Profile section.",
+      });
 
-        if (signInError) throw signInError;
-
-        toast({
-          title: "Welcome!",
-          description: "You can complete your profile in the Profile section.",
-        });
-
-        navigate("/dashboard");
-      }
+      navigate("/dashboard");
     } catch (error: any) {
       console.error("Error verifying OTP:", error);
       toast({
