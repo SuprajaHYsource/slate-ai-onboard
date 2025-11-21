@@ -1,6 +1,7 @@
 import { Button } from "@/components/ui/button";
 import { ArrowRight, Sparkles } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import { Logo } from "@/components/Logo";
 
 const Hero = () => {
   const navigate = useNavigate();
@@ -16,6 +17,11 @@ const Hero = () => {
 
       <div className="container relative z-10 px-4 py-20">
         <div className="max-w-4xl mx-auto text-center space-y-8">
+          {/* Logo */}
+          <div className="flex justify-center mb-8">
+            <Logo className="h-16 md:h-20" />
+          </div>
+
           {/* Badge */}
           <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary/10 border border-primary/20 backdrop-blur-sm">
             <Sparkles className="w-4 h-4 text-primary" />

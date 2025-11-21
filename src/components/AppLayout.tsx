@@ -16,6 +16,7 @@ import {
 } from "@/components/ui/sidebar";
 import { NavLink } from "@/components/NavLink";
 import { ThemeToggle } from "@/components/ThemeToggle";
+import { Logo } from "@/components/Logo";
 import {
   LayoutDashboard,
   User as UserIcon,
@@ -148,9 +149,8 @@ export default function AppLayout() {
     <SidebarProvider>
       <div className="min-h-screen flex w-full">
         <Sidebar collapsible="icon">
-          <div className="p-4 border-b">
-            <h2 className="text-lg font-bold text-primary">SLATE AI</h2>
-            <p className="text-xs text-muted-foreground">Hinfinity</p>
+          <div className="p-4 border-b flex items-center justify-center">
+            <Logo className="h-8" />
           </div>
 
           <SidebarContent>
