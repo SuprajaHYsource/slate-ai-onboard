@@ -10,14 +10,8 @@ const corsHeaders = {
 const VerifyOTPSchema = z.object({
   email: z.string().email("Invalid email format").max(255),
   otp: z.string().regex(/^\d{6}$/, "OTP must be exactly 6 digits"),
-  fullName: z.union([
-    z.string().min(1).max(100).regex(/^[a-zA-Z\s'-]+$/),
-    z.literal("")
-  ]).optional(),
-  password: z.union([
-    z.string().min(8).max(100),
-    z.literal("")
-  ]).optional(),
+  fullName: z.string().max(100).optional(),
+  password: z.string().max(100).optional(),
 });
 
 serve(async (req) => {
@@ -160,14 +154,28 @@ serve(async (req) => {
     }
 
     // Continue with user creation/update for signup flow
+    // Validate fullName for signup
     if (!fullName || fullName.trim() === "") {
       console.error("Full name missing for signup flow");
       throw new Error("Full name is required for new user registration");
     }
 
+    // Validate fullName format
+    const nameRegex = /^[a-zA-Z\s'-]+$/;
+    if (!nameRegex.test(fullName.trim())) {
+      console.error("Invalid full name format");
+      throw new Error("Name can only contain letters, spaces, hyphens, and apostrophes");
+    }
+
+    // Validate password for signup
     if (!password || password.trim() === "") {
       console.error("Password missing for signup flow");
       throw new Error("Password is required for new user registration");
+    }
+
+    if (password.length < 8) {
+      console.error("Password too short");
+      throw new Error("Password must be at least 8 characters");
     }
 
     console.log("Starting user creation/update for:", email);
