@@ -5,9 +5,10 @@ import logoDark from "@/assets/slate-ai-logo-dark.png";
 
 interface LogoProps {
   className?: string;
+  onClick?: () => void;
 }
 
-export const Logo = ({ className = "h-8" }: LogoProps) => {
+export const Logo = ({ className = "h-8", onClick }: LogoProps) => {
   const { theme, systemTheme } = useTheme();
   const [mounted, setMounted] = useState(false);
 
@@ -22,5 +23,5 @@ export const Logo = ({ className = "h-8" }: LogoProps) => {
   const currentTheme = theme === "system" ? systemTheme : theme;
   const logoSrc = currentTheme === "dark" ? logoDark : logoLight;
 
-  return <img src={logoSrc} alt="SLATE AI" className={className} />;
+  return <img src={logoSrc} alt="SLATE AI" className={className} onClick={onClick} />;
 };
