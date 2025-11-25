@@ -620,6 +620,9 @@ const Auth = () => {
                         provider: "google",
                         options: {
                           redirectTo: `${window.location.origin}/dashboard`,
+                          queryParams: {
+                            prompt: 'select_account',
+                          },
                         },
                       });
                       if (error) throw error;
