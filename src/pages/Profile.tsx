@@ -127,7 +127,7 @@ export default function Profile() {
         color: "bg-blue-500/10 text-blue-500",
       },
       google: {
-        label: "You signed up using Google",
+        label: "You signed up through Google social sign on",
         icon: "🔴",
         color: "bg-red-500/10 text-red-500",
       },
@@ -137,7 +137,7 @@ export default function Profile() {
         color: "bg-cyan-500/10 text-cyan-500",
       },
       github: {
-        label: "You signed up using GitHub",
+        label: "You signed up with GitHub social sign on",
         icon: "⚫",
         color: "bg-gray-900/10 text-gray-900",
       },
