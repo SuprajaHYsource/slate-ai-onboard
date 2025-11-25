@@ -127,7 +127,7 @@ export default function Profile() {
         color: "bg-blue-500/10 text-blue-500",
       },
       google: {
-        label: "You signed up through Google social sign on",
+        label: "You signed up using Google",
         icon: "🔴",
         color: "bg-red-500/10 text-red-500",
       },
@@ -137,7 +137,7 @@ export default function Profile() {
         color: "bg-cyan-500/10 text-cyan-500",
       },
       github: {
-        label: "You signed up with GitHub social sign on",
+        label: "You signed up using GitHub",
         icon: "⚫",
         color: "bg-gray-900/10 text-gray-900",
       },
@@ -184,7 +184,9 @@ export default function Profile() {
 
   const signupInfo = getSignupMethodInfo();
   const showPasswordSetup =
-    profile.signup_method !== "admin_created" && !profile.password_set;
+    profile.signup_method !== "manual" &&
+    profile.signup_method !== "admin_created" &&
+    !profile.password_set;
 
   return (
     <div className="space-y-6 animate-fade-in">
