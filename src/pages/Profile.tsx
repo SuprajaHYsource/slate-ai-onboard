@@ -184,9 +184,7 @@ export default function Profile() {
 
   const signupInfo = getSignupMethodInfo();
   const showPasswordSetup =
-    profile.signup_method !== "manual" &&
-    profile.signup_method !== "admin_created" &&
-    !profile.password_set;
+    profile.signup_method !== "admin_created" && !profile.password_set;
 
   return (
     <div className="space-y-6 animate-fade-in">
