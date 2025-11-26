@@ -17,6 +17,7 @@ import {
 import { NavLink } from "@/components/NavLink";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { Logo } from "@/components/Logo";
+import { ProfileMenu } from "@/components/ProfileMenu";
 import {
   LayoutDashboard,
   User as UserIcon,
@@ -203,7 +204,10 @@ export default function AppLayout() {
         <main className="flex-1 overflow-auto">
           <header className="h-14 border-b flex items-center justify-between px-4 bg-background sticky top-0 z-10">
             <SidebarTrigger />
-            <ThemeToggle />
+            <div className="flex items-center gap-3">
+              <ThemeToggle />
+              <ProfileMenu />
+            </div>
           </header>
           <div className="p-6">
             <Outlet />
