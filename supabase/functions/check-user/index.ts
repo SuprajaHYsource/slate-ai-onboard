@@ -38,7 +38,31 @@ serve(async (req) => {
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? ""
     );
 
-    // Check if user exists in auth.users
+    // First check if user exists in profiles table (handles email change case)
+    const { data: profile, error: profileError } = await supabaseAdmin
+      .from("profiles")
+      .select("user_id, email, full_name, signup_method, is_active")
+      .eq("email", email.toLowerCase())
+      .maybeSingle();
+
+    if (profile) {
+      // User found in profiles - they exist
+      return new Response(
+        JSON.stringify({ 
+          exists: true,
+          userId: profile.user_id,
+          fullName: profile.full_name || "",
+          signupMethod: profile.signup_method || "manual",
+          isActive: profile.is_active ?? true
+        }),
+        {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+          status: 200,
+        }
+      );
+    }
+
+    // If not found in profiles, check auth.users as fallback
     const { data: { users }, error: listError } = await supabaseAdmin.auth.admin.listUsers();
     
     if (listError) {
@@ -49,8 +73,8 @@ serve(async (req) => {
     const userExists = users?.find((u) => u.email?.toLowerCase() === email.toLowerCase());
 
     if (userExists) {
-      // User exists - fetch profile info
-      const { data: profile } = await supabaseAdmin
+      // User exists in auth but not in profiles - fetch or create profile info
+      const { data: existingProfile } = await supabaseAdmin
         .from("profiles")
         .select("full_name, signup_method, is_active")
         .eq("user_id", userExists.id)
@@ -60,9 +84,9 @@ serve(async (req) => {
         JSON.stringify({ 
           exists: true,
           userId: userExists.id,
-          fullName: profile?.full_name || "",
-          signupMethod: profile?.signup_method || "manual",
-          isActive: profile?.is_active ?? true
+          fullName: existingProfile?.full_name || "",
+          signupMethod: existingProfile?.signup_method || "manual",
+          isActive: existingProfile?.is_active ?? true
         }),
         {
           headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -70,7 +94,7 @@ serve(async (req) => {
         }
       );
     } else {
-      // User does not exist
+      // User does not exist anywhere
       return new Response(
         JSON.stringify({ 
           exists: false 
