@@ -20,7 +20,12 @@ interface ProfileData {
   roles: string[];
 }
 
-export const ProfileMenu = () => {
+interface ProfileMenuProps {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+}
+
+export const ProfileMenu = ({ open, onOpenChange }: ProfileMenuProps) => {
   const navigate = useNavigate();
   const [profile, setProfile] = useState<ProfileData | null>(null);
   const [loading, setLoading] = useState(true);
@@ -110,7 +115,7 @@ export const ProfileMenu = () => {
   }
 
   return (
-    <DropdownMenu>
+    <DropdownMenu open={open} onOpenChange={onOpenChange}>
       <DropdownMenuTrigger asChild>
         <Button variant="ghost" className="relative h-9 w-9 rounded-full p-0">
           <Avatar className="h-9 w-9">

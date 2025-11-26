@@ -18,6 +18,7 @@ import { NavLink } from "@/components/NavLink";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { Logo } from "@/components/Logo";
 import { ProfileMenu } from "@/components/ProfileMenu";
+import { AppSwitcher } from "@/components/AppSwitcher";
 import {
   LayoutDashboard,
   User as UserIcon,
@@ -36,6 +37,8 @@ export default function AppLayout() {
   const [user, setUser] = useState<User | null>(null);
   const [userRoles, setUserRoles] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
+  const [profileMenuOpen, setProfileMenuOpen] = useState(false);
+  const [appSwitcherOpen, setAppSwitcherOpen] = useState(false);
 
   useEffect(() => {
     // Check auth state
@@ -61,6 +64,36 @@ export default function AppLayout() {
 
     return () => subscription.unsubscribe();
   }, [navigate]);
+
+  // Close both menus on route change
+  useEffect(() => {
+    setProfileMenuOpen(false);
+    setAppSwitcherOpen(false);
+  }, [location.pathname]);
+
+  // Close both menus on ESC key
+  useEffect(() => {
+    const handleEscKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        setProfileMenuOpen(false);
+        setAppSwitcherOpen(false);
+      }
+    };
+
+    document.addEventListener("keydown", handleEscKey);
+    return () => document.removeEventListener("keydown", handleEscKey);
+  }, []);
+
+  // Ensure only one menu is open at a time
+  const handleProfileMenuChange = (open: boolean) => {
+    setProfileMenuOpen(open);
+    if (open) setAppSwitcherOpen(false);
+  };
+
+  const handleAppSwitcherChange = (open: boolean) => {
+    setAppSwitcherOpen(open);
+    if (open) setProfileMenuOpen(false);
+  };
 
   const fetchUserRoles = async (userId: string) => {
     try {
@@ -204,9 +237,16 @@ export default function AppLayout() {
         <main className="flex-1 overflow-auto">
           <header className="h-14 border-b flex items-center justify-between px-4 bg-background sticky top-0 z-10">
             <SidebarTrigger />
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2">
               <ThemeToggle />
-              <ProfileMenu />
+              <AppSwitcher 
+                open={appSwitcherOpen} 
+                onOpenChange={handleAppSwitcherChange} 
+              />
+              <ProfileMenu 
+                open={profileMenuOpen} 
+                onOpenChange={handleProfileMenuChange} 
+              />
             </div>
           </header>
           <div className="p-6">
