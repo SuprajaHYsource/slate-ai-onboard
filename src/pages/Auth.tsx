@@ -418,6 +418,16 @@ const Auth = () => {
           {/* Password Step */}
           {step === "password" && (
             <form onSubmit={handlePasswordSubmit} className="space-y-4">
+              {/* Non-editable email display */}
+              <div className="space-y-2">
+                <Label>Email</Label>
+                <div className="relative">
+                  <Mail className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                  <div className="flex h-10 w-full rounded-md border border-input bg-muted px-3 py-2 pl-10 text-sm text-muted-foreground">
+                    {formData.email}
+                  </div>
+                </div>
+              </div>
               <div className="space-y-2">
                 <Label htmlFor="password">Password</Label>
                 <div className="relative">
@@ -461,6 +471,16 @@ const Auth = () => {
           {/* OTP Step */}
           {step === "otp" && (
             <form onSubmit={handleOTPSubmit} className="space-y-4">
+              {/* Non-editable email display */}
+              <div className="space-y-2">
+                <Label>Email</Label>
+                <div className="relative">
+                  <Mail className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                  <div className="flex h-10 w-full rounded-md border border-input bg-muted px-3 py-2 pl-10 text-sm text-muted-foreground">
+                    {formData.email}
+                  </div>
+                </div>
+              </div>
               <div className="space-y-2">
                 <Label htmlFor="otp">6-Digit OTP</Label>
                 <Input
@@ -476,7 +496,7 @@ const Auth = () => {
                   disabled={loading}
                 />
                 <p className="text-sm text-muted-foreground text-center">
-                  OTP sent to {formData.email}
+                  OTP sent to the above email
                 </p>
               </div>
               <Button type="submit" className="w-full" disabled={loading}>
