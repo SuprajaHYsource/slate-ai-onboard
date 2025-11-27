@@ -80,12 +80,20 @@ export default function RolesList() {
           <h1 className="text-3xl font-bold text-foreground">RBAC & Permissions</h1>
           <p className="text-muted-foreground">Manage roles and permissions</p>
         </div>
-        {hasPermission("rbac", "create") && (
-          <Button onClick={() => navigate("/rbac/create")}>
-            <Plus className="w-4 h-4 mr-2" />
-            Create Custom Role
-          </Button>
-        )}
+        <div className="flex gap-2">
+          {hasPermission("rbac", "edit") && (
+            <Button variant="outline" onClick={() => navigate("/rbac/permissions")}>
+              <Settings className="w-4 h-4 mr-2" />
+              Permission Matrix
+            </Button>
+          )}
+          {hasPermission("rbac", "create") && (
+            <Button onClick={() => navigate("/rbac/create")}>
+              <Plus className="w-4 h-4 mr-2" />
+              Create Custom Role
+            </Button>
+          )}
+        </div>
       </div>
 
       <div>
