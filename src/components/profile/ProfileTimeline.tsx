@@ -86,7 +86,7 @@ export default function ProfileTimeline() {
     return (
       <Card>
         <CardHeader>
-          <CardTitle>Profile Timeline</CardTitle>
+          <CardTitle>Profile Audit Log</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="animate-pulse">Loading timeline...</div>
@@ -99,7 +99,7 @@ export default function ProfileTimeline() {
     return (
       <Card>
         <CardHeader>
-          <CardTitle>Profile Timeline</CardTitle>
+          <CardTitle>Profile Audit Log</CardTitle>
         </CardHeader>
         <CardContent>
           <p className="text-muted-foreground">No timeline events yet</p>
@@ -111,7 +111,7 @@ export default function ProfileTimeline() {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Profile Timeline</CardTitle>
+        <CardTitle>Profile Audit Log</CardTitle>
       </CardHeader>
       <CardContent>
         <div className="space-y-4">
