@@ -209,7 +209,9 @@ export default function EditProfileDialog({
       });
 
       // Dispatch event to notify other components (like ProfileMenu) to refresh
-      window.dispatchEvent(new Event('profile-updated'));
+      window.dispatchEvent(new CustomEvent('profile-updated', { 
+        detail: { profile_picture_url } 
+      }));
 
       onSuccess();
       onOpenChange(false);
