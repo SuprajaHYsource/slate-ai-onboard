@@ -35,7 +35,18 @@ export const ProfileMenu = ({ open, onOpenChange }: ProfileMenuProps) => {
     fetchProfile();
 
     // Listen for profile update events
-    const handleProfileUpdate = () => {
+    const handleProfileUpdate = (event: Event) => {
+      const customEvent = event as CustomEvent;
+      if (customEvent.detail?.profile_picture_url !== undefined) {
+        // Immediately update the profile picture URL with cache-busting
+        setProfile((prev) => prev ? {
+          ...prev,
+          profile_picture_url: customEvent.detail.profile_picture_url 
+            ? `${customEvent.detail.profile_picture_url}?t=${Date.now()}` 
+            : null
+        } : null);
+      }
+      // Also refetch full profile
       fetchProfile();
     };
 
@@ -94,7 +105,9 @@ export const ProfileMenu = ({ open, onOpenChange }: ProfileMenuProps) => {
         setProfile({
           full_name: profileData.full_name,
           email: profileData.email,
-          profile_picture_url: profileData.profile_picture_url,
+          profile_picture_url: profileData.profile_picture_url 
+            ? `${profileData.profile_picture_url}?t=${Date.now()}` 
+            : null,
           roles: rolesData?.map((r: any) => r.role as string).filter(Boolean) || [],
         });
       }
