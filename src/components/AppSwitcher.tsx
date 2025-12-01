@@ -8,14 +8,10 @@ import {
 import { Button } from "@/components/ui/button";
 import {
   LayoutDashboard,
-  Sprout,
-  Map,
-  Calendar,
   BarChart3,
   FileText,
   Users,
   Settings,
-  MessageSquare,
   Grid3x3,
 } from "lucide-react";
 import { LucideIcon } from "lucide-react";
@@ -47,27 +43,6 @@ export const AppSwitcher = ({ open, onOpenChange }: AppSwitcherProps) => {
       route: "/dashboard",
     },
     {
-      id: "crop-monitoring",
-      title: "Crop Monitoring",
-      description: "Track crop health",
-      icon: Sprout,
-      route: "/crop-monitoring",
-    },
-    {
-      id: "field-mapping",
-      title: "Field Mapping",
-      description: "Map your fields",
-      icon: Map,
-      route: "/field-mapping",
-    },
-    {
-      id: "scheduling",
-      title: "Scheduling",
-      description: "Plan & schedule",
-      icon: Calendar,
-      route: "/scheduling",
-    },
-    {
       id: "analytics",
       title: "Analytics",
       description: "Data insights",
@@ -96,13 +71,6 @@ export const AppSwitcher = ({ open, onOpenChange }: AppSwitcherProps) => {
       description: "App preferences",
       icon: Settings,
       route: "/settings",
-    },
-    {
-      id: "support",
-      title: "Support / AI Chat",
-      description: "Get help",
-      icon: MessageSquare,
-      route: "/support",
     },
   ];
 
