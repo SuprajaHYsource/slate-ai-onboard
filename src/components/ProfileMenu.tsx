@@ -32,6 +32,16 @@ export const ProfileMenu = ({ open, onOpenChange }: ProfileMenuProps) => {
 
   useEffect(() => {
     fetchProfile();
+
+    // Listen for profile update events
+    const handleProfileUpdate = () => {
+      fetchProfile();
+    };
+
+    window.addEventListener('profile-updated', handleProfileUpdate);
+    return () => {
+      window.removeEventListener('profile-updated', handleProfileUpdate);
+    };
   }, []);
 
   const fetchProfile = async () => {
