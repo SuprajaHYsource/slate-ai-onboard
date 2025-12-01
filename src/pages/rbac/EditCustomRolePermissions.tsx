@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -32,15 +32,22 @@ export default function EditCustomRolePermissions() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
+  const canEdit = hasPermission("rbac", "edit");
+  const hasFetched = useRef(false);
+
   useEffect(() => {
     if (permissionsLoading) return;
     
-    if (!hasPermission("rbac", "edit")) {
+    if (!canEdit) {
       navigate("/rbac");
       return;
     }
-    fetchData();
-  }, [id, hasPermission, permissionsLoading]);
+    
+    if (!hasFetched.current) {
+      hasFetched.current = true;
+      fetchData();
+    }
+  }, [id, canEdit, permissionsLoading]);
 
   const fetchData = async () => {
     try {
