@@ -49,6 +49,10 @@ export function usePermissions() {
   };
 
   const hasPermission = (module: string, action: string) => {
+    // Super admin has all permissions
+    if (roles.includes("super_admin")) {
+      return true;
+    }
     return permissions.some(
       (p) => p.module === module && p.action === action
     );
