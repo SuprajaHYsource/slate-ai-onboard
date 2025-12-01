@@ -23,11 +23,10 @@ export type CustomRole = {
 export type Role = SystemRole | CustomRole;
 
 const defaultSystemRoles: SystemRole[] = [
-  { value: "super_admin", label: "Super Admin", description: "Full system access with all privileges", type: "system", canDelete: false },
-  { value: "admin", label: "Admin", description: "Administrative access to manage users and view audit logs", type: "system", canDelete: false },
-  { value: "hr", label: "HR", description: "HR management access", type: "system", canDelete: false },
+  { value: "super_admin", label: "Super Admin", description: "Full system access with all privileges (CRUD)", type: "system", canDelete: false },
+  { value: "admin", label: "Admin", description: "Administrative access to manage users (CRU)", type: "system", canDelete: false },
   { value: "manager", label: "Manager", description: "Can manage team resources and view reports", type: "system", canDelete: false },
-  { value: "employee", label: "Employee", description: "Standard user access", type: "system", canDelete: false },
+  { value: "employee", label: "User", description: "Standard user access", type: "system", canDelete: false },
 ];
 
 export function useAllRoles() {
