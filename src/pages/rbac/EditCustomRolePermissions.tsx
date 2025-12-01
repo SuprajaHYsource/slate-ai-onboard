@@ -4,7 +4,10 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
-import { ArrowLeft, Save } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { ArrowLeft, Save, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { usePermissions } from "@/hooks/usePermissions";
 
@@ -19,6 +22,8 @@ type CustomRole = {
   id: string;
   name: string;
   description: string | null;
+  responsibilities: string | null;
+  rules: string | null;
 };
 
 export default function EditCustomRolePermissions() {
@@ -26,11 +31,17 @@ export default function EditCustomRolePermissions() {
   const navigate = useNavigate();
   const { toast } = useToast();
   const { hasPermission, loading: permissionsLoading } = usePermissions();
-  const [customRole, setCustomRole] = useState<CustomRole | null>(null);
   const [permissions, setPermissions] = useState<Permission[]>([]);
   const [selectedPermissions, setSelectedPermissions] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  
+  const [formData, setFormData] = useState({
+    name: "",
+    description: "",
+    responsibilities: "",
+    rules: "",
+  });
 
   const canEdit = hasPermission("rbac", "edit");
   const hasFetched = useRef(false);
@@ -58,10 +69,26 @@ export default function EditCustomRolePermissions() {
         .from("custom_roles")
         .select("*")
         .eq("id", id)
-        .single();
+        .maybeSingle();
 
       if (roleError) throw roleError;
-      setCustomRole(roleData);
+      
+      if (!roleData) {
+        toast({
+          title: "Error",
+          description: "Role not found",
+          variant: "destructive",
+        });
+        navigate("/rbac");
+        return;
+      }
+
+      setFormData({
+        name: roleData.name || "",
+        description: roleData.description || "",
+        responsibilities: (roleData as any).responsibilities || "",
+        rules: (roleData as any).rules || "",
+      });
 
       // Fetch all permissions
       const { data: allPerms, error: permsError } = await supabase
@@ -105,8 +132,32 @@ export default function EditCustomRolePermissions() {
   };
 
   const handleSave = async () => {
+    if (!formData.name.trim()) {
+      toast({
+        title: "Error",
+        description: "Role name is required",
+        variant: "destructive",
+      });
+      return;
+    }
+
     try {
       setSaving(true);
+      const { data: { user } } = await supabase.auth.getUser();
+
+      // Update custom role details
+      const { error: updateError } = await supabase
+        .from("custom_roles")
+        .update({
+          name: formData.name.trim(),
+          description: formData.description.trim() || null,
+          responsibilities: formData.responsibilities.trim() || null,
+          rules: formData.rules.trim() || null,
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", id);
+
+      if (updateError) throw updateError;
 
       // Get current permissions
       const { data: currentPerms } = await supabase
@@ -146,17 +197,31 @@ export default function EditCustomRolePermissions() {
         if (insertError) throw insertError;
       }
 
+      // Log activity
+      await supabase.from("activity_logs").insert({
+        performed_by: user?.id,
+        action_type: "role_changed",
+        description: `Custom role "${formData.name}" updated`,
+        metadata: {
+          role_id: id,
+          role_name: formData.name,
+          permissions_added: toAdd.length,
+          permissions_removed: toRemove.length,
+          action: "updated",
+        },
+      });
+
       toast({
         title: "Success",
-        description: "Permissions updated successfully",
+        description: "Role updated successfully",
       });
 
       navigate("/rbac");
     } catch (error) {
-      console.error("Error saving permissions:", error);
+      console.error("Error saving role:", error);
       toast({
         title: "Error",
-        description: "Failed to update permissions",
+        description: "Failed to update role",
         variant: "destructive",
       });
     } finally {
@@ -176,67 +241,124 @@ export default function EditCustomRolePermissions() {
   if (loading || permissionsLoading) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
-        <p className="text-muted-foreground">Loading permissions...</p>
+        <p className="text-muted-foreground">Loading...</p>
       </div>
     );
   }
 
   return (
-    <div className="space-y-6 animate-fade-in">
+    <div className="space-y-6 animate-fade-in max-w-4xl">
       <div className="flex items-center gap-4">
         <Button variant="ghost" size="sm" onClick={() => navigate("/rbac")}>
           <ArrowLeft className="h-4 w-4 mr-2" />
           Back
         </Button>
         <div>
-          <h1 className="text-3xl font-bold text-foreground">
-            Edit Permissions: {customRole?.name}
-          </h1>
+          <h1 className="text-3xl font-bold text-foreground">Edit Custom Role</h1>
           <p className="text-muted-foreground">
-            {customRole?.description || "Configure permissions for this custom role"}
+            Update role details and permissions
           </p>
         </div>
       </div>
 
-      <div className="space-y-4">
-        {Object.entries(groupedPermissions).map(([module, perms]) => (
-          <Card key={module}>
-            <CardHeader>
-              <CardTitle className="text-lg capitalize">{module}</CardTitle>
-              <CardDescription>
-                Manage {module} module permissions
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {perms.map((perm) => (
-                  <div key={perm.id} className="flex items-center space-x-2">
-                    <Checkbox
-                      id={perm.id}
-                      checked={selectedPermissions.has(perm.id)}
-                      onCheckedChange={() => handleTogglePermission(perm.id)}
-                    />
-                    <label
-                      htmlFor={perm.id}
-                      className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 capitalize cursor-pointer"
-                    >
-                      {perm.action}
-                    </label>
-                  </div>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
+      <Card>
+        <CardHeader>
+          <CardTitle>Role Details</CardTitle>
+          <CardDescription>Update the basic information for this role</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="space-y-2">
+            <Label htmlFor="name">Role Name *</Label>
+            <Input
+              id="name"
+              value={formData.name}
+              onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+              placeholder="e.g., Content Manager"
+              required
+            />
+          </div>
 
-      <div className="flex justify-end gap-2">
+          <div className="space-y-2">
+            <Label htmlFor="description">Description</Label>
+            <Textarea
+              id="description"
+              value={formData.description}
+              onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+              placeholder="Describe what this role can do..."
+              rows={2}
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="responsibilities">Responsibilities</Label>
+            <Textarea
+              id="responsibilities"
+              value={formData.responsibilities}
+              onChange={(e) => setFormData({ ...formData, responsibilities: e.target.value })}
+              placeholder="Define the key responsibilities for this role..."
+              rows={3}
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="rules">Rules</Label>
+            <Textarea
+              id="rules"
+              value={formData.rules}
+              onChange={(e) => setFormData({ ...formData, rules: e.target.value })}
+              placeholder="Specify any rules or restrictions for this role..."
+              rows={3}
+            />
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Permissions</CardTitle>
+          <CardDescription>
+            Configure what this role can access ({selectedPermissions.size} selected)
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-6">
+            {Object.entries(groupedPermissions).map(([module, perms]) => (
+              <div key={module} className="space-y-3">
+                <h4 className="font-semibold capitalize">{module.replace(/_/g, " ")}</h4>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-3 ml-4">
+                  {perms.map((perm) => (
+                    <div key={perm.id} className="flex items-center gap-2">
+                      <Checkbox
+                        id={perm.id}
+                        checked={selectedPermissions.has(perm.id)}
+                        onCheckedChange={() => handleTogglePermission(perm.id)}
+                      />
+                      <Label
+                        htmlFor={perm.id}
+                        className="text-sm capitalize cursor-pointer"
+                      >
+                        {perm.action.replace(/_/g, " ")}
+                      </Label>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+        </CardContent>
+      </Card>
+
+      <div className="flex gap-2">
+        <Button onClick={handleSave} disabled={saving}>
+          {saving ? (
+            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+          ) : (
+            <Save className="h-4 w-4 mr-2" />
+          )}
+          {saving ? "Saving..." : "Save Changes"}
+        </Button>
         <Button variant="outline" onClick={() => navigate("/rbac")}>
           Cancel
-        </Button>
-        <Button onClick={handleSave} disabled={saving}>
-          <Save className="h-4 w-4 mr-2" />
-          {saving ? "Saving..." : "Save Changes"}
         </Button>
       </div>
     </div>
