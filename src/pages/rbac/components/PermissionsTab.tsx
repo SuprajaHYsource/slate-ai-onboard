@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
-import { Switch } from "@/components/ui/switch";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Save } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { usePermissions } from "@/hooks/usePermissions";
@@ -306,11 +306,10 @@ export default function PermissionsTab() {
                     return (
                       <TableCell key={action} className="text-center">
                         {permId ? (
-                          <Switch
+                          <Checkbox
                             checked={rolePermissions.has(permId)}
                             onCheckedChange={() => handleTogglePermission(permId)}
                             disabled={!isSuperAdmin}
-                            className="data-[state=checked]:bg-primary"
                           />
                         ) : (
                           <span className="text-muted-foreground">—</span>
