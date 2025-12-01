@@ -192,7 +192,9 @@ export default function Profile() {
     <div className="space-y-6 animate-fade-in">
       <div className="flex justify-between items-center">
         <div>
-          <h1 className="text-3xl font-bold text-foreground">Profile</h1>
+          <h1 className="text-3xl font-bold text-foreground">
+            Welcome, {profile.full_name.split(" ")[0]}!
+          </h1>
           <p className="text-muted-foreground">Manage your personal information</p>
         </div>
         <Button onClick={() => setEditDialogOpen(true)}>
