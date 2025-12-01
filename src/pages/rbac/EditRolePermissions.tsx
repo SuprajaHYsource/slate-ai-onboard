@@ -19,7 +19,7 @@ export default function EditRolePermissions() {
   const { role } = useParams<{ role: string }>();
   const navigate = useNavigate();
   const { toast } = useToast();
-  const { hasPermission } = usePermissions();
+  const { hasPermission, loading: permissionsLoading } = usePermissions();
   const [permissions, setPermissions] = useState<Permission[]>([]);
   const [selectedPermissions, setSelectedPermissions] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(true);
@@ -30,16 +30,18 @@ export default function EditRolePermissions() {
     admin: "Admin",
     hr: "HR",
     manager: "Manager",
-    employee: "Employee",
+    employee: "User",
   };
 
   useEffect(() => {
+    if (permissionsLoading) return;
+    
     if (!hasPermission("rbac", "edit")) {
       navigate("/rbac");
       return;
     }
     fetchPermissions();
-  }, [role, hasPermission]);
+  }, [role, hasPermission, permissionsLoading]);
 
   const fetchPermissions = async () => {
     try {
@@ -155,7 +157,7 @@ export default function EditRolePermissions() {
     return acc;
   }, {} as Record<string, Permission[]>);
 
-  if (loading) {
+  if (loading || permissionsLoading) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
         <p className="text-muted-foreground">Loading permissions...</p>
