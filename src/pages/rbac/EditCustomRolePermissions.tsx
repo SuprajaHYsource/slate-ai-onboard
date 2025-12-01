@@ -25,7 +25,7 @@ export default function EditCustomRolePermissions() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { toast } = useToast();
-  const { hasPermission } = usePermissions();
+  const { hasPermission, loading: permissionsLoading } = usePermissions();
   const [customRole, setCustomRole] = useState<CustomRole | null>(null);
   const [permissions, setPermissions] = useState<Permission[]>([]);
   const [selectedPermissions, setSelectedPermissions] = useState<Set<string>>(new Set());
@@ -33,12 +33,14 @@ export default function EditCustomRolePermissions() {
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
+    if (permissionsLoading) return;
+    
     if (!hasPermission("rbac", "edit")) {
       navigate("/rbac");
       return;
     }
     fetchData();
-  }, [id, hasPermission]);
+  }, [id, hasPermission, permissionsLoading]);
 
   const fetchData = async () => {
     try {
@@ -164,7 +166,7 @@ export default function EditCustomRolePermissions() {
     return acc;
   }, {} as Record<string, Permission[]>);
 
-  if (loading) {
+  if (loading || permissionsLoading) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
         <p className="text-muted-foreground">Loading permissions...</p>
