@@ -45,8 +45,8 @@ export default function PermissionsTab() {
 
   const isSuperAdmin = hasRole("super_admin");
 
-  // Filter roles - exclude super_admin from editing
-  const editableRoles = allRoles.filter((r) => r.value !== "super_admin");
+  // All roles are now editable including super_admin
+  const editableRoles = allRoles;
 
   useEffect(() => {
     fetchPermissions();
