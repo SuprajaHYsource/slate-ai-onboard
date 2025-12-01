@@ -38,21 +38,21 @@ export function useAllRoles() {
 
   const fetchCustomRoles = async () => {
     try {
-      const { data, error } = await supabase
-        .from("custom_roles")
+      const { data, error } = await (supabase
+        .from("custom_roles") as any)
         .select("*")
         .eq("is_active", true)
         .order("created_at", { ascending: false });
 
       if (error) throw error;
 
-      const mapped: CustomRole[] = (data || []).map((role) => ({
+      const mapped: CustomRole[] = (data || []).map((role: any) => ({
         id: role.id,
         value: `custom_${role.id}`,
         label: role.name,
         description: role.description || "",
-        responsibilities: (role as any).responsibilities || "",
-        rules: (role as any).rules || "",
+        responsibilities: role.responsibilities || "",
+        rules: role.rules || "",
         type: "custom",
         canDelete: true,
         is_active: role.is_active ?? true,

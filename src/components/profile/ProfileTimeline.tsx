@@ -28,8 +28,8 @@ export default function ProfileTimeline() {
 
       if (!user) return;
 
-      const { data, error } = await supabase
-        .from("activity_logs")
+      const { data, error } = await (supabase
+        .from("activity_logs") as any)
         .select("*")
         .eq("user_id", user.id)
         .in("action_type", [

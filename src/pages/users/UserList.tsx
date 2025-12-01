@@ -539,7 +539,7 @@ export default function UserList() {
                   // Fallback: insert invitations and portal notifications directly
                   for (const email of emails) {
                     const token = crypto.randomUUID();
-                    const { error: insertInviteError } = await supabase
+                    const { error: insertInviteError } = await (supabase as any)
                       .from("team_invitations")
                       .insert({
                         email,
@@ -550,19 +550,19 @@ export default function UserList() {
                       });
                     if (insertInviteError) throw insertInviteError;
 
-                    const { data: existingProfile } = await supabase
+                    const { data: existingProfile } = await (supabase as any)
                       .from("profiles")
                       .select("user_id")
                       .eq("email", email)
                       .maybeSingle();
                     if (existingProfile?.user_id) {
-                      const { data: settings } = await supabase
+                      const { data: settings } = await (supabase as any)
                         .from("user_settings")
                         .select("portal_notifications")
                         .eq("user_id", existingProfile.user_id)
                         .maybeSingle();
                       if (!settings || settings.portal_notifications) {
-                        await supabase.from("notifications").insert({
+                        await (supabase as any).from("notifications").insert({
                           user_id: existingProfile.user_id,
                           type: "team_invite",
                           title: "Team Invitation",
@@ -571,7 +571,7 @@ export default function UserList() {
                       }
                     }
                   }
-                  await supabase.from("activity_logs").insert({
+                  await (supabase as any).from("activity_logs").insert({
                     user_id: user?.id,
                     performed_by: user?.id,
                     action_type: "user_created",

@@ -124,11 +124,11 @@ const Auth = () => {
       const { data: { user } } = await supabase.auth.getUser();
       
       if (user) {
-        await supabase.from("profiles").update({
+        await (supabase as any).from("profiles").update({
           last_sign_in: new Date().toISOString(),
         }).eq("user_id", user.id);
 
-        await supabase.from("activity_logs").insert({
+        await (supabase as any).from("activity_logs").insert({
           user_id: user.id,
           performed_by: user.id,
           action_type: "login",
@@ -146,7 +146,7 @@ const Auth = () => {
     } catch (error: any) {
       console.error("Error signing in:", error);
       
-      await supabase.from("activity_logs").insert({
+      await (supabase as any).from("activity_logs").insert({
         action_type: "failed_login",
         description: `Failed login attempt for ${formData.email}`,
         metadata: { email: formData.email, error: error.message },
@@ -270,7 +270,7 @@ const Auth = () => {
       }
 
       // Update profile with additional info
-      const { error: profileError } = await supabase
+      const { error: profileError } = await (supabase as any)
         .from("profiles")
         .update({
           date_of_birth: formData.dateOfBirth || null,

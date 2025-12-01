@@ -63,8 +63,7 @@ export default function SetPasswordDialog({
       if (updateError) throw updateError;
 
       // Update profile to mark password as set
-      await supabase
-        .from("profiles")
+      await (supabase.from("profiles") as any)
         .update({ password_set: true })
         .eq("user_id", user.id);
 

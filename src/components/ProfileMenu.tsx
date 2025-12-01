@@ -79,21 +79,23 @@ export const ProfileMenu = ({ open, onOpenChange }: ProfileMenuProps) => {
       if (!user) return;
       setUserId(user.id);
 
-      const { data: profileData } = await supabase
-        .from("profiles")
+      const { data: profileData } = await (supabase
+        .from("profiles") as any)
         .select("full_name, email, profile_picture_url")
         .eq("user_id", user.id)
         .single();
 
-      const { data: rolesData } = await supabase
-        .from("user_roles")
+      const { data: rolesData } = await (supabase
+        .from("user_roles") as any)
         .select("role")
         .eq("user_id", user.id);
 
       if (profileData) {
         setProfile({
-          ...profileData,
-          roles: rolesData?.map((r) => r.role) || [],
+          full_name: profileData.full_name,
+          email: profileData.email,
+          profile_picture_url: profileData.profile_picture_url,
+          roles: rolesData?.map((r: any) => r.role as string).filter(Boolean) || [],
         });
       }
     } catch (error) {
@@ -108,7 +110,7 @@ export const ProfileMenu = ({ open, onOpenChange }: ProfileMenuProps) => {
       const { data: { user } } = await supabase.auth.getUser();
       
       if (user) {
-        await supabase.from("activity_logs").insert({
+        await (supabase.from("activity_logs") as any).insert({
           user_id: user.id,
           performed_by: user.id,
           action_type: "logout",

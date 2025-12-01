@@ -31,7 +31,7 @@ export default function Settings() {
         const { data: { user } } = await supabase.auth.getUser();
         if (!user) return;
         setUserId(user.id);
-        const { data } = await supabase
+        const { data } = await (supabase as any)
           .from("user_settings")
           .select("theme, email_notifications, portal_notifications, language, timezone")
           .eq("user_id", user.id)
@@ -45,7 +45,7 @@ export default function Settings() {
             timezone: data.timezone || "UTC",
           });
         } else {
-          await supabase.from("user_settings").insert({ user_id: user.id });
+          await (supabase as any).from("user_settings").insert({ user_id: user.id });
         }
       } catch (e: any) {
         toast({ title: "Error", description: e.message || "Failed to load settings", variant: "destructive" });
@@ -60,7 +60,7 @@ export default function Settings() {
     if (!userId) return;
     setSaving(true);
     try {
-      await supabase
+      await (supabase as any)
         .from("user_settings")
         .upsert({
           user_id: userId,
@@ -74,7 +74,7 @@ export default function Settings() {
 
       setTheme(values.theme as any);
 
-      await supabase.from("activity_logs").insert({
+      await (supabase as any).from("activity_logs").insert({
         user_id: userId,
         performed_by: userId,
         action_type: "settings_updated",

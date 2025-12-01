@@ -92,8 +92,7 @@ export default function EditProfileDialog({
       }
 
       // Update profile to remove picture URL
-      const { error } = await supabase
-        .from("profiles")
+      const { error } = await (supabase.from("profiles") as any)
         .update({ profile_picture_url: null })
         .eq("user_id", user.id);
 
@@ -181,8 +180,7 @@ export default function EditProfileDialog({
         }
       }
 
-      const { error } = await supabase
-        .from("profiles")
+      const { error } = await (supabase.from("profiles") as any)
         .update({
           ...formData,
           profile_picture_url,
@@ -192,7 +190,7 @@ export default function EditProfileDialog({
       if (error) throw error;
 
       // Log activity
-      await supabase.from("activity_logs").insert({
+      await (supabase.from("activity_logs") as any).insert({
         user_id: user.id,
         performed_by: user.id,
         action_type: "profile_updated",
