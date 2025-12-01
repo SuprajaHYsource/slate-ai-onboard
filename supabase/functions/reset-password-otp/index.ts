@@ -66,19 +66,54 @@ serve(async (req) => {
       throw new Error("Invalid OTP");
     }
 
-    // After OTP validation, get user by email
-    const { data: { users }, error: getUserError } = await supabaseAdmin.auth.admin.listUsers();
-    
-    if (getUserError) {
-      console.error("Error fetching users:", getUserError);
-      throw new Error("Failed to find user");
+    // After OTP validation, get user by email from profiles table first
+    const { data: profileData, error: profileLookupError } = await supabaseAdmin
+      .from("profiles")
+      .select("user_id")
+      .eq("email", email)
+      .maybeSingle();
+
+    let userId: string;
+
+    if (profileData?.user_id) {
+      userId = profileData.user_id;
+      console.log(`Found user in profiles: ${userId}`);
+    } else {
+      // Fallback: search in auth.users with pagination
+      console.log("User not found in profiles, searching auth.users...");
+      let foundUser = null;
+      let page = 1;
+      const perPage = 1000;
+      
+      while (!foundUser) {
+        const { data: { users }, error: listError } = await supabaseAdmin.auth.admin.listUsers({
+          page,
+          perPage
+        });
+        
+        if (listError) {
+          console.error("Error listing users:", listError);
+          throw new Error("Failed to find user");
+        }
+        
+        if (users.length === 0) break;
+        
+        foundUser = users.find(u => u.email === email);
+        if (foundUser) break;
+        
+        if (users.length < perPage) break;
+        page++;
+      }
+      
+      if (!foundUser) {
+        console.error(`User not found for email: ${email}`);
+        throw new Error("User not found");
+      }
+      
+      userId = foundUser.id;
     }
 
-    const user = users.find(u => u.email === email);
-    
-    if (!user) {
-      throw new Error("User not found");
-    }
+    const user = { id: userId };
 
     // Update user password
     const { error: updateError } = await supabaseAdmin.auth.admin.updateUserById(
