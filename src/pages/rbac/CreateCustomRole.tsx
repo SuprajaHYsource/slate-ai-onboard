@@ -137,14 +137,15 @@ export default function CreateCustomRole() {
       // Log activity
       await supabase.from("activity_logs").insert({
         performed_by: user?.id,
-        action_type: "role_changed",
+        action_type: "custom_role_created",
         description: `Custom role "${formData.name}" created`,
         metadata: {
           role_id: newRole.id,
           role_name: formData.name,
           permissions_count: selectedPermissions.size,
-          action: "created",
         },
+        module: "rbac",
+        status: "success",
       });
 
       toast({

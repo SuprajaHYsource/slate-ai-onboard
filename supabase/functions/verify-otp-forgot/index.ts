@@ -99,6 +99,26 @@ serve(async (req) => {
 
     console.log(`OTP verified for ${email}`);
 
+    // Log OTP verification activity for forgot password
+    // Try to find user by email to log activity
+    const { data: profile } = await supabaseAdmin
+      .from("profiles")
+      .select("user_id")
+      .eq("email", email)
+      .maybeSingle();
+
+    if (profile?.user_id) {
+      await supabaseAdmin.from("activity_logs").insert({
+        user_id: profile.user_id,
+        performed_by: profile.user_id,
+        action_type: "otp_verification",
+        description: `OTP verified for password reset: ${email}`,
+        metadata: { email, flow: "forgot_password" },
+        module: "auth",
+        status: "success",
+      });
+    }
+
     return new Response(
       JSON.stringify({ success: true, message: "OTP verified" }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 200 }

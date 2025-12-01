@@ -132,13 +132,15 @@ export default function ChangeEmailDialog({
       await supabase.from("activity_logs").insert({
         user_id: user.id,
         performed_by: user.id,
-        action_type: "email_changed",
+        action_type: "email_change",
         description: `Email changed from ${currentEmail} to ${newEmail}`,
         metadata: {
           old_email: currentEmail,
           new_email: newEmail,
         },
-      });
+        module: "profile",
+        status: "success",
+      } as any);
 
       toast({
         title: "Success",

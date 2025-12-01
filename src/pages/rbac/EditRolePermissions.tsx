@@ -98,6 +98,7 @@ export default function EditRolePermissions() {
   const handleSave = async () => {
     try {
       setSaving(true);
+      const { data: { user } } = await supabase.auth.getUser();
 
       // Get current permissions
       const { data: currentPerms } = await supabase
@@ -136,6 +137,20 @@ export default function EditRolePermissions() {
 
         if (insertError) throw insertError;
       }
+
+      // Log activity
+      await supabase.from("activity_logs").insert({
+        performed_by: user?.id,
+        action_type: "permission_updated",
+        description: `Permissions updated for role "${roleLabels[role || ""] || role}"`,
+        metadata: {
+          role: role,
+          permissions_added: toAdd.length,
+          permissions_removed: toRemove.length,
+        },
+        module: "rbac",
+        status: "success",
+      });
 
       toast({
         title: "Success",

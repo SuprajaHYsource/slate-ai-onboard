@@ -197,6 +197,12 @@ export default function EditProfileDialog({
         performed_by: user.id,
         action_type: "profile_updated",
         description: "Profile information updated",
+        module: "profile",
+        status: "success",
+        metadata: {
+          fields_updated: Object.keys(formData),
+          image_changed: !!profileImage,
+        },
       });
 
       toast({

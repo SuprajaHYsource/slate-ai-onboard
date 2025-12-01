@@ -108,12 +108,14 @@ serve(async (req) => {
     await supabaseAdmin.from("activity_logs").insert({
       user_id: user.id,
       performed_by: user.id,
-      action_type: "password_changed",
+      action_type: "password_reset",
       description: `Password reset via OTP for ${email}`,
       metadata: {
         email,
         reset_method: "otp"
-      }
+      },
+      module: "auth",
+      status: "success",
     });
 
     console.log(`Password reset successfully for ${email}`);

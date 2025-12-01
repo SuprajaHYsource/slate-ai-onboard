@@ -133,6 +133,8 @@ const Auth = () => {
           performed_by: user.id,
           action_type: "login",
           description: "User logged in",
+          module: "auth",
+          status: "success",
         });
       }
 
@@ -148,6 +150,8 @@ const Auth = () => {
         action_type: "failed_login",
         description: `Failed login attempt for ${formData.email}`,
         metadata: { email: formData.email, error: error.message },
+        module: "auth",
+        status: "failed",
       });
 
       toast({

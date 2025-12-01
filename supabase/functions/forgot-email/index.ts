@@ -62,6 +62,25 @@ Deno.serve(async (req) => {
     }
 
     if (data && data.email) {
+      // Log forgot email activity
+      const { data: profile } = await supabaseClient
+        .from("profiles")
+        .select("user_id")
+        .eq("email", data.email)
+        .maybeSingle();
+
+      if (profile?.user_id) {
+        await supabaseClient.from("activity_logs").insert({
+          user_id: profile.user_id,
+          performed_by: profile.user_id,
+          action_type: "forgot_email",
+          description: `Email recovered using ${searchBy}: ${value}`,
+          metadata: { searchBy, value, email: data.email },
+          module: "auth",
+          status: "success",
+        });
+      }
+
       return new Response(
         JSON.stringify({ email: data.email }),
         { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }

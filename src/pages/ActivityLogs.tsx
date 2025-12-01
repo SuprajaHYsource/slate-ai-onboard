@@ -1,9 +1,34 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Activity } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Calendar, Search } from "lucide-react";
 import { usePermissions } from "@/hooks/usePermissions";
+import { format } from "date-fns";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import { Calendar as CalendarComponent } from "@/components/ui/calendar";
 
 interface ActivityLog {
   id: string;
@@ -11,16 +36,70 @@ interface ActivityLog {
   description: string;
   created_at: string;
   metadata: any;
-  profiles: {
+  module: string | null;
+  target: string | null;
+  status: string | null;
+  performed_by: string | null;
+  user_id: string | null;
+  performer_profile: {
     full_name: string;
     email: string;
+    profile_picture_url: string | null;
   } | null;
+  performer_roles: string[];
 }
+
+const ACTION_TYPES = [
+  { value: "all", label: "All actions" },
+  { value: "login", label: "User Login" },
+  { value: "logout", label: "User Logout" },
+  { value: "signup", label: "Signup" },
+  { value: "otp_verification", label: "OTP Verification" },
+  { value: "otp_resend", label: "OTP Resend" },
+  { value: "forgot_email", label: "Forgot Email" },
+  { value: "forgot_password", label: "Forgot Password" },
+  { value: "password_reset", label: "Password Reset" },
+  { value: "password_set", label: "Password Set" },
+  { value: "profile_updated", label: "Profile Updated" },
+  { value: "email_change", label: "Email Change" },
+  { value: "user_created", label: "User Created" },
+  { value: "user_updated", label: "User Updated" },
+  { value: "user_deleted", label: "User Deleted" },
+  { value: "role_changed", label: "Role Changed" },
+  { value: "user_role_assigned", label: "Role Assigned" },
+  { value: "custom_role_created", label: "Custom Role Created" },
+  { value: "custom_role_updated", label: "Custom Role Updated" },
+  { value: "custom_role_deleted", label: "Custom Role Deleted" },
+  { value: "permission_updated", label: "Permission Updated" },
+  { value: "user_status_changed", label: "Status Changed" },
+];
+
+const MODULES = [
+  { value: "all", label: "All modules" },
+  { value: "auth", label: "Auth" },
+  { value: "users", label: "Users" },
+  { value: "profile", label: "Profile" },
+  { value: "rbac", label: "RBAC" },
+  { value: "system", label: "System" },
+];
+
+const STATUSES = [
+  { value: "all", label: "All status" },
+  { value: "success", label: "Success" },
+  { value: "failed", label: "Failed" },
+  { value: "pending", label: "Pending" },
+];
 
 export default function ActivityLogs() {
   const { hasPermission } = usePermissions();
   const [logs, setLogs] = useState<ActivityLog[]>([]);
   const [loading, setLoading] = useState(true);
+  const [searchEmail, setSearchEmail] = useState("");
+  const [actionFilter, setActionFilter] = useState("all");
+  const [moduleFilter, setModuleFilter] = useState("all");
+  const [statusFilter, setStatusFilter] = useState("all");
+  const [startDate, setStartDate] = useState<Date | undefined>();
+  const [endDate, setEndDate] = useState<Date | undefined>();
 
   useEffect(() => {
     if (hasPermission("activity_logs", "view")) {
@@ -34,23 +113,56 @@ export default function ActivityLogs() {
         .from("activity_logs")
         .select("*")
         .order("created_at", { ascending: false })
-        .limit(100);
+        .limit(200);
 
       if (error) throw error;
 
-      // Fetch profile details separately for each log
+      // Fetch profile details and roles for performers
       const logsWithProfiles = await Promise.all(
         (data || []).map(async (log) => {
-          if (log.user_id) {
+          let performer_profile = null;
+          let performer_roles: string[] = [];
+
+          const performerId = log.performed_by || log.user_id;
+
+          if (performerId) {
             const { data: profile } = await supabase
               .from("profiles")
-              .select("full_name, email")
-              .eq("user_id", log.user_id)
+              .select("full_name, email, profile_picture_url")
+              .eq("user_id", performerId)
               .single();
 
-            return { ...log, profiles: profile };
+            performer_profile = profile;
+
+            // Fetch roles
+            const { data: userRoles } = await supabase
+              .from("user_roles")
+              .select("role, custom_role_id")
+              .eq("user_id", performerId);
+
+            if (userRoles) {
+              for (const ur of userRoles) {
+                if (ur.role) {
+                  performer_roles.push(ur.role.replace("_", " "));
+                } else if (ur.custom_role_id) {
+                  const { data: customRole } = await supabase
+                    .from("custom_roles")
+                    .select("name")
+                    .eq("id", ur.custom_role_id)
+                    .single();
+                  if (customRole) {
+                    performer_roles.push(customRole.name);
+                  }
+                }
+              }
+            }
           }
-          return { ...log, profiles: null };
+
+          return {
+            ...log,
+            performer_profile,
+            performer_roles,
+          };
         })
       );
 
@@ -62,23 +174,127 @@ export default function ActivityLogs() {
     }
   };
 
-  const getActionBadgeColor = (actionType: string) => {
-    const colors: Record<string, string> = {
-      login: "bg-green-500/10 text-green-500",
-      logout: "bg-gray-500/10 text-gray-500",
-      failed_login: "bg-red-500/10 text-red-500",
-      signup: "bg-blue-500/10 text-blue-500",
-      user_created: "bg-blue-500/10 text-blue-500",
-      user_updated: "bg-orange-500/10 text-orange-500",
-      user_deleted: "bg-red-500/10 text-red-500",
-      role_changed: "bg-purple-500/10 text-purple-500",
-      profile_updated: "bg-cyan-500/10 text-cyan-500",
+  const filteredLogs = logs.filter((log) => {
+    // Email search
+    if (searchEmail && log.performer_profile) {
+      const searchLower = searchEmail.toLowerCase();
+      if (!log.performer_profile.email.toLowerCase().includes(searchLower)) {
+        return false;
+      }
+    }
+
+    // Action filter
+    if (actionFilter !== "all" && log.action_type !== actionFilter) {
+      return false;
+    }
+
+    // Module filter
+    if (moduleFilter !== "all" && log.module !== moduleFilter) {
+      return false;
+    }
+
+    // Status filter
+    if (statusFilter !== "all" && log.status !== statusFilter) {
+      return false;
+    }
+
+    // Date filters
+    const logDate = new Date(log.created_at);
+    if (startDate && logDate < startDate) {
+      return false;
+    }
+    if (endDate) {
+      const endOfDay = new Date(endDate);
+      endOfDay.setHours(23, 59, 59, 999);
+      if (logDate > endOfDay) {
+        return false;
+      }
+    }
+
+    return true;
+  });
+
+  const getActionBadgeStyle = (actionType: string) => {
+    const styles: Record<string, string> = {
+      login: "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20",
+      logout: "bg-slate-500/10 text-slate-600 dark:text-slate-400 border-slate-500/20",
+      failed_login: "bg-red-500/10 text-red-600 dark:text-red-400 border-red-500/20",
+      signup: "bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/20",
+      otp_verification: "bg-cyan-500/10 text-cyan-600 dark:text-cyan-400 border-cyan-500/20",
+      otp_resend: "bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20",
+      forgot_email: "bg-orange-500/10 text-orange-600 dark:text-orange-400 border-orange-500/20",
+      forgot_password: "bg-orange-500/10 text-orange-600 dark:text-orange-400 border-orange-500/20",
+      password_reset: "bg-violet-500/10 text-violet-600 dark:text-violet-400 border-violet-500/20",
+      password_set: "bg-violet-500/10 text-violet-600 dark:text-violet-400 border-violet-500/20",
+      user_created: "bg-green-500/10 text-green-600 dark:text-green-400 border-green-500/20",
+      user_updated: "bg-yellow-500/10 text-yellow-600 dark:text-yellow-400 border-yellow-500/20",
+      user_deleted: "bg-red-500/10 text-red-600 dark:text-red-400 border-red-500/20",
+      role_changed: "bg-purple-500/10 text-purple-600 dark:text-purple-400 border-purple-500/20",
+      user_role_assigned: "bg-purple-500/10 text-purple-600 dark:text-purple-400 border-purple-500/20",
+      profile_updated: "bg-teal-500/10 text-teal-600 dark:text-teal-400 border-teal-500/20",
+      email_change: "bg-pink-500/10 text-pink-600 dark:text-pink-400 border-pink-500/20",
+      custom_role_created: "bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border-indigo-500/20",
+      custom_role_updated: "bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border-indigo-500/20",
+      custom_role_deleted: "bg-rose-500/10 text-rose-600 dark:text-rose-400 border-rose-500/20",
+      permission_updated: "bg-fuchsia-500/10 text-fuchsia-600 dark:text-fuchsia-400 border-fuchsia-500/20",
+      user_status_changed: "bg-sky-500/10 text-sky-600 dark:text-sky-400 border-sky-500/20",
     };
-    return colors[actionType] || "bg-gray-500/10 text-gray-500";
+    return styles[actionType] || "bg-gray-500/10 text-gray-600 dark:text-gray-400 border-gray-500/20";
+  };
+
+  const getStatusBadge = (status: string | null) => {
+    const statusLower = (status || "success").toLowerCase();
+    const styles: Record<string, string> = {
+      success: "bg-green-500 text-white",
+      failed: "bg-red-500 text-white",
+      pending: "bg-yellow-500 text-white",
+    };
+    return (
+      <Badge className={`${styles[statusLower] || styles.success} text-xs font-medium`}>
+        {statusLower.charAt(0).toUpperCase() + statusLower.slice(1)}
+      </Badge>
+    );
+  };
+
+  const formatActionType = (actionType: string) => {
+    return actionType.toUpperCase().replace(/_/g, "_");
+  };
+
+  const getInitials = (name: string | undefined) => {
+    if (!name) return "?";
+    return name
+      .split(" ")
+      .map((n) => n[0])
+      .join("")
+      .toUpperCase()
+      .slice(0, 2);
+  };
+
+  const getRoleLabel = (roles: string[]) => {
+    if (roles.length === 0) return "User";
+    // Capitalize first letter of each word
+    return roles[0]
+      .split(" ")
+      .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+      .join(" ");
   };
 
   if (loading) {
-    return <div className="animate-pulse">Loading activity logs...</div>;
+    return (
+      <div className="space-y-6 animate-fade-in">
+        <div>
+          <h1 className="text-3xl font-bold text-foreground">Audit Logs</h1>
+          <p className="text-muted-foreground">View system activity and security events</p>
+        </div>
+        <Card>
+          <CardContent className="p-8">
+            <div className="animate-pulse text-center text-muted-foreground">
+              Loading activity logs...
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    );
   }
 
   if (!hasPermission("activity_logs", "view")) {
@@ -94,54 +310,193 @@ export default function ActivityLogs() {
   return (
     <div className="space-y-6 animate-fade-in">
       <div>
-        <h1 className="text-3xl font-bold text-foreground">Activity Logs</h1>
-        <p className="text-muted-foreground">View system activity and user actions</p>
+        <h1 className="text-3xl font-bold text-foreground">Audit Logs</h1>
+        <p className="text-muted-foreground">View system activity and security events</p>
       </div>
 
       <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Activity className="h-5 w-5" />
-            Recent Activity
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          {logs.length === 0 ? (
-            <p className="text-muted-foreground">No activity logs yet</p>
-          ) : (
-            <div className="space-y-4">
-              {logs.map((log) => (
-                <div
-                  key={log.id}
-                  className="flex items-start gap-4 pb-4 border-b last:border-0"
+        <CardContent className="p-6">
+          {/* Filters */}
+          <div className="space-y-4 mb-6">
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                  placeholder="Search by email..."
+                  value={searchEmail}
+                  onChange={(e) => setSearchEmail(e.target.value)}
+                  className="pl-9"
+                />
+              </div>
+              <Select value={actionFilter} onValueChange={setActionFilter}>
+                <SelectTrigger>
+                  <SelectValue placeholder="All actions" />
+                </SelectTrigger>
+                <SelectContent>
+                  {ACTION_TYPES.map((action) => (
+                    <SelectItem key={action.value} value={action.value}>
+                      {action.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <Select value={moduleFilter} onValueChange={setModuleFilter}>
+                <SelectTrigger>
+                  <SelectValue placeholder="All modules" />
+                </SelectTrigger>
+                <SelectContent>
+                  {MODULES.map((module) => (
+                    <SelectItem key={module.value} value={module.value}>
+                      {module.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <Select value={statusFilter} onValueChange={setStatusFilter}>
+                <SelectTrigger>
+                  <SelectValue placeholder="All status" />
+                </SelectTrigger>
+                <SelectContent>
+                  {STATUSES.map((status) => (
+                    <SelectItem key={status.value} value={status.value}>
+                      {status.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="flex gap-4">
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button variant="outline" className="gap-2">
+                    <Calendar className="h-4 w-4" />
+                    {startDate ? format(startDate, "MMM dd, yyyy") : "Start date"}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="start">
+                  <CalendarComponent
+                    mode="single"
+                    selected={startDate}
+                    onSelect={setStartDate}
+                    initialFocus
+                  />
+                </PopoverContent>
+              </Popover>
+
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button variant="outline" className="gap-2">
+                    <Calendar className="h-4 w-4" />
+                    {endDate ? format(endDate, "MMM dd, yyyy") : "End date"}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="start">
+                  <CalendarComponent
+                    mode="single"
+                    selected={endDate}
+                    onSelect={setEndDate}
+                    initialFocus
+                  />
+                </PopoverContent>
+              </Popover>
+
+              {(startDate || endDate || searchEmail || actionFilter !== "all" || moduleFilter !== "all" || statusFilter !== "all") && (
+                <Button
+                  variant="ghost"
+                  onClick={() => {
+                    setStartDate(undefined);
+                    setEndDate(undefined);
+                    setSearchEmail("");
+                    setActionFilter("all");
+                    setModuleFilter("all");
+                    setStatusFilter("all");
+                  }}
                 >
-                  <div className="flex-1">
-                    <div className="flex items-start justify-between gap-4">
-                      <div className="flex-1">
-                        <p className="font-medium">{log.description}</p>
-                        {log.profiles && (
-                          <p className="text-sm text-muted-foreground">
-                            {log.profiles.full_name} ({log.profiles.email})
-                          </p>
-                        )}
-                        <p className="text-xs text-muted-foreground mt-1">
-                          {new Date(log.created_at).toLocaleString()}
-                        </p>
-                      </div>
-                      <Badge className={getActionBadgeColor(log.action_type)}>
-                        {log.action_type.replace("_", " ")}
-                      </Badge>
-                    </div>
-                    {log.metadata && Object.keys(log.metadata).length > 0 && (
-                      <div className="mt-2 p-2 bg-muted rounded text-xs">
-                        <pre className="overflow-auto">
-                          {JSON.stringify(log.metadata, null, 2)}
-                        </pre>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              ))}
+                  Clear filters
+                </Button>
+              )}
+            </div>
+          </div>
+
+          {/* Table */}
+          <div className="rounded-md border">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Action</TableHead>
+                  <TableHead>Performed By</TableHead>
+                  <TableHead>Module</TableHead>
+                  <TableHead>Target</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead>Timestamp</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {filteredLogs.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
+                      No activity logs found
+                    </TableCell>
+                  </TableRow>
+                ) : (
+                  filteredLogs.map((log) => (
+                    <TableRow key={log.id}>
+                      <TableCell>
+                        <Badge
+                          variant="outline"
+                          className={`${getActionBadgeStyle(log.action_type)} font-mono text-xs`}
+                        >
+                          {formatActionType(log.action_type)}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex items-center gap-3">
+                          <Avatar className="h-8 w-8">
+                            <AvatarImage
+                              src={log.performer_profile?.profile_picture_url || ""}
+                              alt={log.performer_profile?.full_name || "User"}
+                            />
+                            <AvatarFallback className="text-xs bg-primary/10 text-primary">
+                              {getInitials(log.performer_profile?.full_name)}
+                            </AvatarFallback>
+                          </Avatar>
+                          <div className="flex flex-col">
+                            <span className="text-sm font-medium">
+                              {log.performer_profile?.email || "System"}
+                            </span>
+                            <span className="text-xs text-muted-foreground">
+                              {getRoleLabel(log.performer_roles)}
+                            </span>
+                          </div>
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <span className="text-sm text-muted-foreground">
+                          {log.module || "auth"}
+                        </span>
+                      </TableCell>
+                      <TableCell>
+                        <span className="text-sm text-muted-foreground">
+                          {log.target || "-"}
+                        </span>
+                      </TableCell>
+                      <TableCell>{getStatusBadge(log.status)}</TableCell>
+                      <TableCell>
+                        <span className="text-sm text-muted-foreground">
+                          {format(new Date(log.created_at), "MMM dd, yyyy HH:mm:ss")}
+                        </span>
+                      </TableCell>
+                    </TableRow>
+                  ))
+                )}
+              </TableBody>
+            </Table>
+          </div>
+
+          {filteredLogs.length > 0 && (
+            <div className="mt-4 text-sm text-muted-foreground">
+              Showing {filteredLogs.length} of {logs.length} logs
             </div>
           )}
         </CardContent>
