@@ -21,6 +21,7 @@ import { Plus, Search, MoreVertical, Eye, Edit, Trash2 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
 import { usePermissions } from "@/hooks/usePermissions";
+import { useAllRoles } from "@/hooks/useAllRoles";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -43,13 +44,19 @@ interface UserProfile {
   created_at: string;
 }
 
+interface UserRoleInfo {
+  role: string | null;
+  custom_role_id: string | null;
+}
+
 export default function UserList() {
   const navigate = useNavigate();
   const { toast } = useToast();
   const { hasPermission, hasRole } = usePermissions();
+  const { allRoles } = useAllRoles();
   const [users, setUsers] = useState<UserProfile[]>([]);
   const [filteredUsers, setFilteredUsers] = useState<UserProfile[]>([]);
-  const [userRoles, setUserRoles] = useState<Record<string, string[]>>({});
+  const [userRoles, setUserRoles] = useState<Record<string, UserRoleInfo[]>>({});
   const [searchTerm, setSearchTerm] = useState("");
   const [loading, setLoading] = useState(true);
   const [deleteUserId, setDeleteUserId] = useState<string | null>(null);
@@ -85,15 +92,15 @@ export default function UserList() {
       setUsers(profiles || []);
       setFilteredUsers(profiles || []);
 
-      // Fetch roles for each user
+      // Fetch roles for each user (including custom roles)
       if (profiles) {
-        const rolesMap: Record<string, string[]> = {};
+        const rolesMap: Record<string, UserRoleInfo[]> = {};
         for (const profile of profiles) {
           const { data: roles } = await supabase
             .from("user_roles")
-            .select("role")
+            .select("role, custom_role_id")
             .eq("user_id", profile.user_id);
-          rolesMap[profile.user_id] = roles?.map((r) => r.role) || [];
+          rolesMap[profile.user_id] = roles || [];
         }
         setUserRoles(rolesMap);
       }
@@ -149,7 +156,10 @@ export default function UserList() {
     }
   };
 
-  const getRoleBadgeColor = (role: string) => {
+  const getRoleBadgeColor = (role: string, isCustom: boolean = false) => {
+    if (isCustom) {
+      return "bg-indigo-500/10 text-indigo-500";
+    }
     const colors: Record<string, string> = {
       super_admin: "bg-purple-500/10 text-purple-500",
       admin: "bg-blue-500/10 text-blue-500",
@@ -158,6 +168,18 @@ export default function UserList() {
       employee: "bg-gray-500/10 text-gray-500",
     };
     return colors[role] || "bg-gray-500/10 text-gray-500";
+  };
+
+  const getRoleLabel = (roleInfo: UserRoleInfo) => {
+    if (roleInfo.role) {
+      const systemRole = allRoles.find(r => r.value === roleInfo.role);
+      return { label: systemRole?.label || roleInfo.role.replace("_", " "), isCustom: false };
+    }
+    if (roleInfo.custom_role_id) {
+      const customRole = allRoles.find(r => r.value === `custom_${roleInfo.custom_role_id}`);
+      return { label: customRole?.label || "Custom Role", isCustom: true };
+    }
+    return { label: "No Role", isCustom: false };
   };
 
   const getSignupMethodBadge = (method: string) => {
@@ -239,15 +261,19 @@ export default function UserList() {
                   <TableCell>{user.email}</TableCell>
                   <TableCell>
                     <div className="flex flex-wrap gap-1">
-                      {userRoles[user.user_id]?.map((role) => (
-                        <Badge
-                          key={role}
-                          variant="secondary"
-                          className={getRoleBadgeColor(role)}
-                        >
-                          {role.replace("_", " ")}
-                        </Badge>
-                      ))}
+                      {userRoles[user.user_id]?.map((roleInfo, idx) => {
+                        const { label, isCustom } = getRoleLabel(roleInfo);
+                        return (
+                          <Badge
+                            key={idx}
+                            variant="secondary"
+                            className={getRoleBadgeColor(roleInfo.role || "", isCustom)}
+                          >
+                            {label}
+                            {isCustom && <span className="ml-1 text-xs opacity-70">★</span>}
+                          </Badge>
+                        );
+                      })}
                     </div>
                   </TableCell>
                   <TableCell>
