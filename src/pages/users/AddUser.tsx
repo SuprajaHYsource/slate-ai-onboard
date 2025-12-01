@@ -15,18 +15,12 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ArrowLeft, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Switch } from "@/components/ui/switch";
-
-const roles = [
-  { value: "super_admin", label: "Super Admin" },
-  { value: "admin", label: "Admin" },
-  { value: "hr", label: "HR" },
-  { value: "manager", label: "Manager" },
-  { value: "employee", label: "Employee" },
-];
+import { useAllRoles } from "@/hooks/useAllRoles";
 
 export default function AddUser() {
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { systemRoles } = useAllRoles();
   const [loading, setLoading] = useState(false);
   const [autoGeneratePassword, setAutoGeneratePassword] = useState(false);
   const [formData, setFormData] = useState({
@@ -224,7 +218,7 @@ export default function AddUser() {
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  {roles.map((role) => (
+                  {systemRoles.map((role) => (
                     <SelectItem key={role.value} value={role.value}>
                       {role.label}
                     </SelectItem>
