@@ -20,12 +20,12 @@ export function usePermissions() {
       if (!user) return;
 
       // Fetch user roles
-      const { data: userRoles } = await supabase
-        .from("user_roles")
+      const { data: userRoles } = await (supabase
+        .from("user_roles") as any)
         .select("role")
         .eq("user_id", user.id);
 
-      const rolesList = userRoles?.map((r) => r.role) || [];
+      const rolesList = userRoles?.map((r: any) => r.role).filter(Boolean) || [];
       setRoles(rolesList);
 
       // Fetch permissions for these roles

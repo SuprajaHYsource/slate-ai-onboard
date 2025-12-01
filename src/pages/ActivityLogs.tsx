@@ -119,14 +119,14 @@ export default function ActivityLogs() {
 
       // Fetch profile details and roles for performers
       const logsWithProfiles = await Promise.all(
-        (data || []).map(async (log) => {
+        (data || []).map(async (log: any) => {
           let performer_profile = null;
           let performer_roles: string[] = [];
 
           const performerId = log.performed_by || log.user_id;
 
           if (performerId) {
-            const { data: profile } = await supabase
+            const { data: profile } = await (supabase as any)
               .from("profiles")
               .select("full_name, email, profile_picture_url")
               .eq("user_id", performerId)
@@ -135,7 +135,7 @@ export default function ActivityLogs() {
             performer_profile = profile;
 
             // Fetch roles
-            const { data: userRoles } = await supabase
+            const { data: userRoles } = await (supabase as any)
               .from("user_roles")
               .select("role, custom_role_id")
               .eq("user_id", performerId);
@@ -145,7 +145,7 @@ export default function ActivityLogs() {
                 if (ur.role) {
                   performer_roles.push(ur.role.replace("_", " "));
                 } else if (ur.custom_role_id) {
-                  const { data: customRole } = await supabase
+                  const { data: customRole } = await (supabase as any)
                     .from("custom_roles")
                     .select("name")
                     .eq("id", ur.custom_role_id)

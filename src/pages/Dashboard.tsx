@@ -45,7 +45,7 @@ export default function Dashboard() {
       
       if (!welcomeShown) {
         // Fetch user profile to check signup method and password status
-        const { data: profile } = await supabase
+        const { data: profile } = await (supabase as any)
           .from("profiles")
           .select("signup_method, password_set")
           .eq("user_id", user.id)
@@ -107,7 +107,7 @@ export default function Dashboard() {
         .select("*", { count: "exact", head: true });
 
       // Count active users
-      const { count: activeUsers } = await supabase
+      const { count: activeUsers } = await (supabase as any)
         .from("profiles")
         .select("*", { count: "exact", head: true })
         .eq("is_active", true);

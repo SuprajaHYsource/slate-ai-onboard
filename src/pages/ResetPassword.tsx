@@ -66,12 +66,12 @@ const ResetPassword = () => {
       // Update profile to mark password as set
       const { data: { user } } = await supabase.auth.getUser();
       if (user) {
-        await supabase.from("profiles").update({
+        await (supabase as any).from("profiles").update({
           password_set: true,
         }).eq("user_id", user.id);
 
         // Log activity
-        await supabase.from("activity_logs").insert({
+        await (supabase as any).from("activity_logs").insert({
           user_id: user.id,
           performed_by: user.id,
           action_type: "password_changed",

@@ -73,7 +73,7 @@ export default function Profile() {
         return;
       }
 
-      const { data: profileData, error } = await supabase
+      const { data: profileData, error } = await (supabase as any)
         .from("profiles")
         .select("*")
         .eq("user_id", user.id)
@@ -84,12 +84,12 @@ export default function Profile() {
       setProfile(profileData);
 
       // Fetch roles
-      const { data: rolesData } = await supabase
+      const { data: rolesData } = await (supabase as any)
         .from("user_roles")
         .select("role")
         .eq("user_id", user.id);
 
-      setRoles(rolesData?.map((r) => r.role) || []);
+      setRoles(rolesData?.map((r: any) => r.role).filter(Boolean) || []);
     } catch (error: any) {
       toast({
         title: "Error",

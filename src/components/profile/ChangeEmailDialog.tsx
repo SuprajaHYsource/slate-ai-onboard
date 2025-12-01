@@ -123,13 +123,12 @@ export default function ChangeEmailDialog({
       if (updateError) throw updateError;
 
       // Update profile
-      await supabase
-        .from("profiles")
+      await (supabase.from("profiles") as any)
         .update({ email: newEmail, email_verified: true })
         .eq("user_id", user.id);
 
       // Log activity
-      await supabase.from("activity_logs").insert({
+      await (supabase.from("activity_logs") as any).insert({
         user_id: user.id,
         performed_by: user.id,
         action_type: "email_change",
@@ -140,7 +139,7 @@ export default function ChangeEmailDialog({
         },
         module: "profile",
         status: "success",
-      } as any);
+      });
 
       toast({
         title: "Success",
