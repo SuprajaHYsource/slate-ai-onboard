@@ -22,7 +22,10 @@ export type Database = {
           id: string
           ip_address: string | null
           metadata: Json | null
+          module: string | null
           performed_by: string | null
+          status: string | null
+          target: string | null
           user_id: string | null
         }
         Insert: {
@@ -32,7 +35,10 @@ export type Database = {
           id?: string
           ip_address?: string | null
           metadata?: Json | null
+          module?: string | null
           performed_by?: string | null
+          status?: string | null
+          target?: string | null
           user_id?: string | null
         }
         Update: {
@@ -42,7 +48,10 @@ export type Database = {
           id?: string
           ip_address?: string | null
           metadata?: Json | null
+          module?: string | null
           performed_by?: string | null
+          status?: string | null
+          target?: string | null
           user_id?: string | null
         }
         Relationships: []
@@ -304,6 +313,16 @@ export type Database = {
         | "password_changed"
         | "status_changed"
         | "password_set"
+        | "otp_verification"
+        | "otp_resend"
+        | "forgot_email"
+        | "forgot_password"
+        | "password_reset"
+        | "custom_role_created"
+        | "custom_role_updated"
+        | "custom_role_deleted"
+        | "user_role_assigned"
+        | "user_status_changed"
       app_role: "super_admin" | "admin" | "hr" | "manager" | "employee"
     }
     CompositeTypes: {
@@ -448,6 +467,16 @@ export const Constants = {
         "password_changed",
         "status_changed",
         "password_set",
+        "otp_verification",
+        "otp_resend",
+        "forgot_email",
+        "forgot_password",
+        "password_reset",
+        "custom_role_created",
+        "custom_role_updated",
+        "custom_role_deleted",
+        "user_role_assigned",
+        "user_status_changed",
       ],
       app_role: ["super_admin", "admin", "hr", "manager", "employee"],
     },

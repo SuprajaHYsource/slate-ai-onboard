@@ -141,6 +141,27 @@ serve(async (req) => {
     // If it's just OTP verification (not signup), return success
     if (!isSignupFlow) {
       console.log(`OTP verified for email change: ${email}`);
+      
+      // Log OTP verification activity for email change
+      // Try to find user by email to log activity
+      const { data: profile } = await supabaseAdmin
+        .from("profiles")
+        .select("user_id")
+        .eq("email", email)
+        .maybeSingle();
+
+      if (profile?.user_id) {
+        await supabaseAdmin.from("activity_logs").insert({
+          user_id: profile.user_id,
+          performed_by: profile.user_id,
+          action_type: "otp_verification",
+          description: `OTP verified for email change: ${email}`,
+          metadata: { email, flow: "email_change" },
+          module: "auth",
+          status: "success",
+        });
+      }
+      
       return new Response(
         JSON.stringify({ 
           success: true, 
@@ -288,6 +309,19 @@ serve(async (req) => {
       action_type: "signup",
       description: `User signed up manually: ${email}`,
       metadata: { method: "manual", email },
+      module: "auth",
+      status: "success",
+    });
+
+    // Log OTP verification activity
+    await supabaseAdmin.from("activity_logs").insert({
+      user_id: userId,
+      performed_by: userId,
+      action_type: "otp_verification",
+      description: `OTP verified for signup: ${email}`,
+      metadata: { email, flow: "signup" },
+      module: "auth",
+      status: "success",
     });
 
     console.log(`User account ready: ${email}`);

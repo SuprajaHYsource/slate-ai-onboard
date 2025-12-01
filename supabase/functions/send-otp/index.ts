@@ -111,6 +111,29 @@ serve(async (req) => {
 
     console.log(`OTP sent successfully to ${email}`);
 
+    // Log OTP send/resend activity
+    // Try to find user by email to log activity
+    const { data: profile } = await supabaseAdmin
+      .from("profiles")
+      .select("user_id")
+      .eq("email", email)
+      .maybeSingle();
+
+    const actionType = flow === "forgot_password" ? "forgot_password" : "otp_resend";
+    const description = flow === "forgot_password" 
+      ? `Password reset OTP sent to: ${email}`
+      : `OTP sent to: ${email} for ${flow || "signup"}`;
+
+    await supabaseAdmin.from("activity_logs").insert({
+      user_id: profile?.user_id || null,
+      performed_by: profile?.user_id || null,
+      action_type: actionType,
+      description: description,
+      metadata: { email, flow: flow || "signup" },
+      module: "auth",
+      status: "success",
+    });
+
     return new Response(
       JSON.stringify({ 
         success: true, 

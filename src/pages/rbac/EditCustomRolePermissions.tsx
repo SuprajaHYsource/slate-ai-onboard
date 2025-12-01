@@ -200,15 +200,16 @@ export default function EditCustomRolePermissions() {
       // Log activity
       await supabase.from("activity_logs").insert({
         performed_by: user?.id,
-        action_type: "role_changed",
+        action_type: "custom_role_updated",
         description: `Custom role "${formData.name}" updated`,
         metadata: {
           role_id: id,
           role_name: formData.name,
           permissions_added: toAdd.length,
           permissions_removed: toRemove.length,
-          action: "updated",
         },
+        module: "rbac",
+        status: "success",
       });
 
       toast({

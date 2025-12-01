@@ -72,11 +72,13 @@ export default function SetPasswordDialog({
       await supabase.from("activity_logs").insert({
         user_id: user.id,
         performed_by: user.id,
-        action_type: isFirstTime ? "password_set" : "password_changed",
+        action_type: isFirstTime ? "password_set" : "password_change",
         description: isFirstTime
           ? "Password set for the first time"
           : "Password changed",
-      });
+        module: "profile",
+        status: "success",
+      } as any);
 
       toast({
         title: "Success",

@@ -183,7 +183,7 @@ export default function UserList() {
       await supabase.from("activity_logs").insert({
         user_id: userId,
         performed_by: currentUser?.id,
-        action_type: "role_changed",
+        action_type: "user_role_assigned",
         description: `User role changed: ${oldRoleLabel} → ${newRoleLabel}`,
         metadata: {
           old_role: currentRole,
@@ -191,6 +191,9 @@ export default function UserList() {
           old_role_label: oldRoleLabel,
           new_role_label: newRoleLabel,
         },
+        module: "users",
+        target: userId,
+        status: "success",
       });
 
       // Update local state
@@ -229,6 +232,9 @@ export default function UserList() {
         performed_by: user?.id,
         action_type: "user_deleted",
         description: "User account deactivated",
+        module: "users",
+        target: deleteUserId,
+        status: "success",
       });
 
       toast({
