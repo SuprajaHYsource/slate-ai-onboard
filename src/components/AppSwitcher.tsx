@@ -11,7 +11,7 @@ import {
   FileText,
   Users,
   Settings,
-  Grid3x3,
+  LayoutGrid,
   User,
   Shield,
 } from "lucide-react";
@@ -104,7 +104,7 @@ export const AppSwitcher = ({ open, onOpenChange }: AppSwitcherProps) => {
           className="h-9 w-9 rounded-md hover:bg-accent"
           aria-label="App Switcher"
         >
-          <Grid3x3 className="h-5 w-5 text-muted-foreground" />
+          <LayoutGrid className="h-5 w-5 text-muted-foreground" />
         </Button>
       </PopoverTrigger>
       <PopoverContent
