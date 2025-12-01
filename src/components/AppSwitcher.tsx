@@ -8,11 +8,12 @@ import {
 import { Button } from "@/components/ui/button";
 import {
   LayoutDashboard,
-  BarChart3,
   FileText,
   Users,
   Settings,
   Grid3x3,
+  User,
+  Shield,
 } from "lucide-react";
 import { LucideIcon } from "lucide-react";
 
@@ -43,11 +44,11 @@ export const AppSwitcher = ({ open, onOpenChange }: AppSwitcherProps) => {
       route: "/dashboard",
     },
     {
-      id: "analytics",
-      title: "Analytics",
-      description: "Data insights",
-      icon: BarChart3,
-      route: "/analytics",
+      id: "profile",
+      title: "Profile",
+      description: "Manage your account",
+      icon: User,
+      route: "/profile",
     },
     {
       id: "activity-logs",
@@ -55,6 +56,14 @@ export const AppSwitcher = ({ open, onOpenChange }: AppSwitcherProps) => {
       description: "Activity tracking",
       icon: FileText,
       route: "/activity-logs",
+      requiredRoles: ["super_admin", "admin"],
+    },
+    {
+      id: "rbac",
+      title: "RBAC & Permissions",
+      description: "Access control",
+      icon: Shield,
+      route: "/rbac",
       requiredRoles: ["super_admin", "admin"],
     },
     {

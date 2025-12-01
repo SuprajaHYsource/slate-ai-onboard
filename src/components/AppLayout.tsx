@@ -39,6 +39,8 @@ export default function AppLayout() {
   const [loading, setLoading] = useState(true);
   const [profileMenuOpen, setProfileMenuOpen] = useState(false);
   const [appSwitcherOpen, setAppSwitcherOpen] = useState(false);
+  const [notificationsOpen, setNotificationsOpen] = useState(false);
+  const [notifications, setNotifications] = useState<Array<{ id: string; title: string; message: string; read: boolean; created_at: string }>>([]);
 
   useEffect(() => {
     // Check auth state
@@ -69,6 +71,7 @@ export default function AppLayout() {
   useEffect(() => {
     setProfileMenuOpen(false);
     setAppSwitcherOpen(false);
+    setNotificationsOpen(false);
   }, [location.pathname]);
 
   // Close both menus on ESC key
@@ -88,12 +91,44 @@ export default function AppLayout() {
   const handleProfileMenuChange = (open: boolean) => {
     setProfileMenuOpen(open);
     if (open) setAppSwitcherOpen(false);
+    if (open) setNotificationsOpen(false);
   };
 
   const handleAppSwitcherChange = (open: boolean) => {
     setAppSwitcherOpen(open);
     if (open) setProfileMenuOpen(false);
+    if (open) setNotificationsOpen(false);
   };
+
+  const handleNotificationsChange = (open: boolean) => {
+    setNotificationsOpen(open);
+    if (open) {
+      setProfileMenuOpen(false);
+      setAppSwitcherOpen(false);
+    }
+  };
+
+  useEffect(() => {
+    if (!user?.id) return;
+    // Initial fetch
+    supabase
+      .from("notifications")
+      .select("id, title, message, read, created_at")
+      .eq("user_id", user.id)
+      .order("created_at", { ascending: false })
+      .then(({ data }) => setNotifications(data || []));
+
+    // Realtime subscription
+    const channel = supabase
+      .channel("notifications")
+      .on("postgres_changes", { event: "INSERT", schema: "public", table: "notifications", filter: `user_id=eq.${user.id}` }, (payload) => {
+        const n = payload.new as any;
+        setNotifications((prev) => [{ id: n.id, title: n.title, message: n.message, read: n.read, created_at: n.created_at }, ...prev]);
+      })
+      .subscribe();
+
+    return () => channel.unsubscribe();
+  }, [user?.id]);
 
   const fetchUserRoles = async (userId: string) => {
     try {
@@ -239,6 +274,48 @@ export default function AppLayout() {
             <SidebarTrigger />
             <div className="flex items-center gap-2">
               <ThemeToggle />
+              {/* Notifications */}
+              <div className="relative">
+                <button
+                  className="h-9 w-9 rounded-md hover:bg-accent relative"
+                  aria-label="Notifications"
+                  onClick={() => handleNotificationsChange(!notificationsOpen)}
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" className="h-5 w-5 text-muted-foreground"><path d="M15 17h5l-1.405-1.405A2.032 2.032 0 0 1 18 14.158V11a6.002 6.002 0 0 0-4-5.659V5a2 2 0 1 0-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                  {notifications.some((n) => !n.read) && (
+                    <span className="absolute -top-1 -right-1 h-4 min-w-4 rounded-full bg-destructive text-destructive-foreground text-[10px] flex items-center justify-center px-1">
+                      {notifications.filter((n) => !n.read).length}
+                    </span>
+                  )}
+                </button>
+                {notificationsOpen && (
+                  <div className="absolute right-0 mt-2 w-80 rounded-lg border bg-popover p-2 shadow-md">
+                    <div className="px-2 py-1 text-sm font-semibold">Notifications</div>
+                    <div className="max-h-80 overflow-auto">
+                      {notifications.length === 0 ? (
+                        <div className="p-4 text-sm text-muted-foreground">No notifications</div>
+                      ) : (
+                        notifications.map((n) => (
+                          <button
+                            key={n.id}
+                            className={`w-full text-left p-2 rounded-md hover:bg-accent ${n.read ? "opacity-70" : ""}`}
+                            onClick={async () => {
+                              if (!n.read) {
+                                setNotifications((prev) => prev.map((x) => (x.id === n.id ? { ...x, read: true } : x)));
+                                await supabase.from("notifications").update({ read: true }).eq("id", n.id);
+                              }
+                            }}
+                          >
+                            <div className="text-sm font-medium">{n.title}</div>
+                            <div className="text-xs text-muted-foreground">{n.message}</div>
+                            <div className="text-[10px] text-muted-foreground mt-1">{new Date(n.created_at).toLocaleString()}</div>
+                          </button>
+                        ))
+                      )}
+                    </div>
+                  </div>
+                )}
+              </div>
               <AppSwitcher 
                 open={appSwitcherOpen} 
                 onOpenChange={handleAppSwitcherChange} 

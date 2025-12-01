@@ -19,7 +19,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Plus, Search, Edit, Trash2 } from "lucide-react";
+import { Plus, Search, Edit, Trash2, Mail } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
 import { usePermissions } from "@/hooks/usePermissions";
@@ -34,6 +34,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 
 interface UserProfile {
   id: string;
@@ -66,6 +67,10 @@ export default function UserList() {
   const [loading, setLoading] = useState(true);
   const [deleteUserId, setDeleteUserId] = useState<string | null>(null);
   const [updatingRole, setUpdatingRole] = useState<string | null>(null);
+  const [inviteOpen, setInviteOpen] = useState(false);
+  const [inviteEmails, setInviteEmails] = useState("");
+  const [inviteTeamName, setInviteTeamName] = useState("");
+  const [inviting, setInviting] = useState(false);
 
   useEffect(() => {
     if (hasPermission("users", "view") && !rolesLoading) {
@@ -288,12 +293,20 @@ export default function UserList() {
           <h1 className="text-3xl font-bold text-foreground">User Management</h1>
           <p className="text-muted-foreground">Manage users and assign roles across your organization</p>
         </div>
-        {hasPermission("users", "create") && (
-          <Button onClick={() => navigate("/users/add")}>
-            <Plus className="w-4 h-4 mr-2" />
-            Add User
-          </Button>
-        )}
+        <div className="flex items-center gap-2">
+          {hasPermission("users", "create") && (
+            <Button onClick={() => navigate("/users/add")}>
+              <Plus className="w-4 h-4 mr-2" />
+              Add User
+            </Button>
+          )}
+          {hasPermission("users", "create") && (
+            <Button variant="outline" onClick={() => setInviteOpen(true)}>
+              <Mail className="w-4 h-4 mr-2" />
+              Invite Team
+            </Button>
+          )}
+        </div>
       </div>
 
       <div className="flex items-center gap-4 flex-wrap">
@@ -471,6 +484,115 @@ export default function UserList() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <Dialog open={inviteOpen} onOpenChange={setInviteOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Invite Team Members</DialogTitle>
+            <DialogDescription>
+              Enter email addresses to invite. Separate multiple emails with commas.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <label className="text-sm text-muted-foreground">Emails</label>
+              <Input
+                placeholder="alice@example.com, bob@example.com"
+                value={inviteEmails}
+                onChange={(e) => setInviteEmails(e.target.value)}
+              />
+            </div>
+            <div>
+              <label className="text-sm text-muted-foreground">Team Name (optional)</label>
+              <Input
+                placeholder="e.g. Marketing"
+                value={inviteTeamName}
+                onChange={(e) => setInviteTeamName(e.target.value)}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setInviteOpen(false)}>Cancel</Button>
+            <Button disabled={inviting} onClick={async () => {
+              const emails = inviteEmails
+                .split(",")
+                .map((e) => e.trim())
+                .filter((e) => e.length > 0);
+              if (emails.length === 0) {
+                toast({ title: "No emails", description: "Please enter at least one email", variant: "destructive" });
+                return;
+              }
+              setInviting(true);
+              try {
+                const { data, error } = await supabase.functions.invoke("invite-team", {
+                  body: { emails, teamName: inviteTeamName || undefined },
+                });
+                if (error) throw error;
+                toast({ title: "Invitations sent", description: `${data?.results?.filter((r: any) => r.ok).length || emails.length} invitation(s) sent.` });
+                setInviteOpen(false);
+                setInviteEmails("");
+                setInviteTeamName("");
+              } catch (err: any) {
+                try {
+                  const { data: { user } } = await supabase.auth.getUser();
+                  const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+                  // Fallback: insert invitations and portal notifications directly
+                  for (const email of emails) {
+                    const token = crypto.randomUUID();
+                    const { error: insertInviteError } = await supabase
+                      .from("team_invitations")
+                      .insert({
+                        email,
+                        team_name: inviteTeamName || null,
+                        invited_by: user?.id || null,
+                        invite_token: token,
+                        expires_at: expiresAt.toISOString(),
+                      });
+                    if (insertInviteError) throw insertInviteError;
+
+                    const { data: existingProfile } = await supabase
+                      .from("profiles")
+                      .select("user_id")
+                      .eq("email", email)
+                      .maybeSingle();
+                    if (existingProfile?.user_id) {
+                      const { data: settings } = await supabase
+                        .from("user_settings")
+                        .select("portal_notifications")
+                        .eq("user_id", existingProfile.user_id)
+                        .maybeSingle();
+                      if (!settings || settings.portal_notifications) {
+                        await supabase.from("notifications").insert({
+                          user_id: existingProfile.user_id,
+                          type: "team_invite",
+                          title: "Team Invitation",
+                          message: `You have been invited${inviteTeamName ? ` to join team "${inviteTeamName}"` : ""}.`,
+                        });
+                      }
+                    }
+                  }
+                  await supabase.from("activity_logs").insert({
+                    user_id: user?.id,
+                    performed_by: user?.id,
+                    action_type: "user_created",
+                    description: `Invited ${emails.length} team member(s) (fallback)`,
+                    module: "users",
+                    status: "partial",
+                  });
+                  toast({ title: "Invitations queued", description: "Portal notifications created. Email sending requires edge function deployment.", });
+                  setInviteOpen(false);
+                  setInviteEmails("");
+                  setInviteTeamName("");
+                } catch (e2: any) {
+                  toast({ title: "Error", description: e2.message || "Failed to process invitations", variant: "destructive" });
+                }
+              } finally {
+                setInviting(false);
+              }
+            }}>Send Invites</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

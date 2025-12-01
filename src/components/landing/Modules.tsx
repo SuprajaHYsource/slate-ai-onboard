@@ -1,5 +1,5 @@
 import { Card } from "@/components/ui/card";
-import { UserCog, Clock, FileText, LayoutDashboard, Bot, Plug } from "lucide-react";
+import { UserCog, Clock, FileText, LayoutDashboard, Bot, Plug, User as UserIcon, Settings, Users, Shield } from "lucide-react";
 
 const modules = [
   {
@@ -38,6 +38,37 @@ const modules = [
     description: "Connect your favorite tools",
     color: "from-teal-500 to-cyan-500",
   },
+  {
+    icon: LayoutDashboard,
+    title: "Dashboard",
+    description: "Central overview and quick actions",
+    color: "from-sky-500 to-blue-500",
+  },
+  {
+    icon: UserIcon,
+    title: "Profile",
+    description: "Manage personal information and preferences",
+    color: "from-rose-500 to-pink-500",
+  },
+  {
+    icon: Settings,
+    title: "Settings",
+    description: "Configure account and application settings",
+    color: "from-gray-500 to-slate-500",
+  },
+  {
+    icon: Users,
+    title: "User Management",
+    description: "Create and manage users and roles",
+    color: "from-emerald-500 to-teal-500",
+  },
+  {
+    icon: Shield,
+    title: "RBAC & Permissions",
+    description: "Role-based access control and permissions",
+    color: "from-indigo-500 to-violet-500",
+  },
+  
 ];
 
 const Modules = () => {

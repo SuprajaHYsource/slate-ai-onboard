@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Users, Shield, Activity, UserCheck, KeyRound, Mail, Sprout, Map, Calendar, MessageSquare } from "lucide-react";
+import { Users, Shield, Activity, UserCheck, KeyRound, Mail } from "lucide-react";
 import { usePermissions } from "@/hooks/usePermissions";
 import {
   Dialog,
@@ -253,59 +253,7 @@ export default function Dashboard() {
         </div>
       )}
 
-      {/* Feature Cards */}
-      <div>
-        <h2 className="text-xl font-semibold text-foreground mb-4">Features</h2>
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-          <Card className="hover-scale cursor-pointer group" onClick={() => navigate("/crop-monitoring")}>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Crop Monitoring</CardTitle>
-              <Sprout className="h-5 w-5 text-green-500 group-hover:scale-110 transition-transform" />
-            </CardHeader>
-            <CardContent>
-              <p className="text-xs text-muted-foreground">
-                Track and monitor crop health, growth patterns, and field conditions
-              </p>
-            </CardContent>
-          </Card>
-
-          <Card className="hover-scale cursor-pointer group" onClick={() => navigate("/field-mapping")}>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Field Mapping</CardTitle>
-              <Map className="h-5 w-5 text-blue-500 group-hover:scale-110 transition-transform" />
-            </CardHeader>
-            <CardContent>
-              <p className="text-xs text-muted-foreground">
-                Create and manage field boundaries, zones, and geographic data
-              </p>
-            </CardContent>
-          </Card>
-
-          <Card className="hover-scale cursor-pointer group" onClick={() => navigate("/scheduling")}>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Scheduling</CardTitle>
-              <Calendar className="h-5 w-5 text-orange-500 group-hover:scale-110 transition-transform" />
-            </CardHeader>
-            <CardContent>
-              <p className="text-xs text-muted-foreground">
-                Plan and schedule tasks, events, and workforce activities
-              </p>
-            </CardContent>
-          </Card>
-
-          <Card className="hover-scale cursor-pointer group" onClick={() => navigate("/support")}>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Support / AI Chat</CardTitle>
-              <MessageSquare className="h-5 w-5 text-purple-500 group-hover:scale-110 transition-transform" />
-            </CardHeader>
-            <CardContent>
-              <p className="text-xs text-muted-foreground">
-                Get help with AI-powered assistance and support resources
-              </p>
-            </CardContent>
-          </Card>
-        </div>
-      </div>
+      {/* Features section removed as requested */}
 
       <Card>
         <CardHeader>

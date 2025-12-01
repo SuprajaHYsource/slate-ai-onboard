@@ -29,15 +29,45 @@ export const ProfileMenu = ({ open, onOpenChange }: ProfileMenuProps) => {
   const navigate = useNavigate();
   const [profile, setProfile] = useState<ProfileData | null>(null);
   const [loading, setLoading] = useState(true);
+  const [userId, setUserId] = useState<string | null>(null);
 
   useEffect(() => {
     fetchProfile();
   }, []);
 
+  useEffect(() => {
+    if (!userId) return;
+    const channel = supabase
+      .channel("user-profile-changes")
+      .on(
+        "postgres_changes",
+        { event: "UPDATE", schema: "public", table: "profiles", filter: `user_id=eq.${userId}` },
+        (payload) => {
+          const next = payload.new as { full_name?: string; email?: string; profile_picture_url?: string | null };
+          setProfile((prev) =>
+            prev
+              ? {
+                  full_name: next.full_name ?? prev.full_name,
+                  email: next.email ?? prev.email,
+                  profile_picture_url: next.profile_picture_url ?? prev.profile_picture_url,
+                  roles: prev.roles,
+                }
+              : null
+          );
+        }
+      )
+      .subscribe();
+
+    return () => {
+      channel.unsubscribe();
+    };
+  }, [userId]);
+
   const fetchProfile = async () => {
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
+      setUserId(user.id);
 
       const { data: profileData } = await supabase
         .from("profiles")
