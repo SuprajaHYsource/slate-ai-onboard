@@ -14,6 +14,8 @@ export type CustomRole = {
   value: string;
   label: string;
   description: string;
+  responsibilities: string;
+  rules: string;
   type: "custom";
   canDelete: boolean;
   is_active: boolean;
@@ -49,6 +51,8 @@ export function useAllRoles() {
         value: `custom_${role.id}`,
         label: role.name,
         description: role.description || "",
+        responsibilities: (role as any).responsibilities || "",
+        rules: (role as any).rules || "",
         type: "custom",
         canDelete: true,
         is_active: role.is_active ?? true,
