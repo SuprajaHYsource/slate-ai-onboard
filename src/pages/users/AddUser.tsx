@@ -16,11 +16,12 @@ import { ArrowLeft, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Switch } from "@/components/ui/switch";
 import { useAllRoles } from "@/hooks/useAllRoles";
+import { Badge } from "@/components/ui/badge";
 
 export default function AddUser() {
   const navigate = useNavigate();
   const { toast } = useToast();
-  const { systemRoles } = useAllRoles();
+  const { allRoles } = useAllRoles();
   const [loading, setLoading] = useState(false);
   const [autoGeneratePassword, setAutoGeneratePassword] = useState(false);
   const [formData, setFormData] = useState({
@@ -95,14 +96,28 @@ export default function AddUser() {
 
       if (profileError) throw profileError;
 
-      // Assign role
-      const { error: roleError } = await supabase.from("user_roles").insert([{
-        user_id: newUserId,
-        role: formData.role as any,
-        assigned_by: currentUser?.id,
-      }]);
+      // Assign role - handle both system and custom roles
+      const isCustomRole = formData.role.startsWith("custom_");
+      
+      if (isCustomRole) {
+        const customRoleId = formData.role.replace("custom_", "");
+        const { error: roleError } = await supabase.from("user_roles").insert([{
+          user_id: newUserId,
+          custom_role_id: customRoleId,
+          assigned_by: currentUser?.id,
+        }]);
+        if (roleError) throw roleError;
+      } else {
+        const { error: roleError } = await supabase.from("user_roles").insert([{
+          user_id: newUserId,
+          role: formData.role as any,
+          assigned_by: currentUser?.id,
+        }]);
+        if (roleError) throw roleError;
+      }
 
-      if (roleError) throw roleError;
+      // Get role label for logging
+      const roleLabel = allRoles.find(r => r.value === formData.role)?.label || formData.role;
 
       // Log activity
       await supabase.from("activity_logs").insert({
@@ -110,7 +125,7 @@ export default function AddUser() {
         performed_by: currentUser?.id,
         action_type: "user_created",
         description: `User ${formData.full_name} created by admin`,
-        metadata: { role: formData.role },
+        metadata: { role: formData.role, role_label: roleLabel },
       });
 
       toast({
@@ -218,9 +233,14 @@ export default function AddUser() {
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  {systemRoles.map((role) => (
+                  {allRoles.map((role) => (
                     <SelectItem key={role.value} value={role.value}>
-                      {role.label}
+                      <div className="flex items-center gap-2">
+                        {role.label}
+                        {role.type === "custom" && (
+                          <Badge variant="outline" className="text-xs">Custom</Badge>
+                        )}
+                      </div>
                     </SelectItem>
                   ))}
                 </SelectContent>

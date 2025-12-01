@@ -16,12 +16,13 @@ import { ArrowLeft, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Switch } from "@/components/ui/switch";
 import { useAllRoles } from "@/hooks/useAllRoles";
+import { Badge } from "@/components/ui/badge";
 
 export default function EditUser() {
   const { userId } = useParams();
   const navigate = useNavigate();
   const { toast } = useToast();
-  const { systemRoles } = useAllRoles();
+  const { allRoles, loading: rolesLoading } = useAllRoles();
   const [loading, setLoading] = useState(false);
   const [initialLoading, setInitialLoading] = useState(true);
   const [currentRole, setCurrentRole] = useState("");
@@ -33,10 +34,10 @@ export default function EditUser() {
   });
 
   useEffect(() => {
-    if (userId) {
+    if (userId && !rolesLoading) {
       fetchUser();
     }
-  }, [userId]);
+  }, [userId, rolesLoading]);
 
   const fetchUser = async () => {
     try {
@@ -49,22 +50,30 @@ export default function EditUser() {
 
       if (profileError) throw profileError;
 
-      // Fetch role
+      // Fetch role (system or custom)
       const { data: userRole, error: roleError } = await supabase
         .from("user_roles")
-        .select("role")
+        .select("role, custom_role_id")
         .eq("user_id", userId)
-        .single();
+        .maybeSingle();
 
-      if (roleError && roleError.code !== "PGRST116") throw roleError;
+      if (roleError) throw roleError;
 
-      const role = userRole?.role || "employee";
-      setCurrentRole(role);
+      let roleValue = "employee"; // default
+      if (userRole) {
+        if (userRole.role) {
+          roleValue = userRole.role;
+        } else if (userRole.custom_role_id) {
+          roleValue = `custom_${userRole.custom_role_id}`;
+        }
+      }
+      
+      setCurrentRole(roleValue);
 
       setFormData({
         full_name: profile.full_name,
         email: profile.email,
-        role: role,
+        role: roleValue,
         is_active: profile.is_active,
       });
     } catch (error: any) {
@@ -104,36 +113,51 @@ export default function EditUser() {
         // Delete old role
         await supabase.from("user_roles").delete().eq("user_id", userId);
 
-        // Insert new role
-        const { error: roleError } = await supabase.from("user_roles").insert([{
-          user_id: userId,
-          role: formData.role as any,
-          assigned_by: currentUser?.id,
-        }]);
+        // Determine if it's a system role or custom role
+        const isCustomRole = formData.role.startsWith("custom_");
+        
+        if (isCustomRole) {
+          const customRoleId = formData.role.replace("custom_", "");
+          const { error: roleError } = await supabase.from("user_roles").insert([{
+            user_id: userId,
+            custom_role_id: customRoleId,
+            assigned_by: currentUser?.id,
+          }]);
+          if (roleError) throw roleError;
+        } else {
+          const { error: roleError } = await supabase.from("user_roles").insert([{
+            user_id: userId,
+            role: formData.role as any,
+            assigned_by: currentUser?.id,
+          }]);
+          if (roleError) throw roleError;
+        }
 
-        if (roleError) throw roleError;
+        // Get role labels for logging
+        const oldRoleLabel = allRoles.find(r => r.value === currentRole)?.label || currentRole;
+        const newRoleLabel = allRoles.find(r => r.value === formData.role)?.label || formData.role;
 
-        // Determine if promotion or demotion
-        const roleHierarchy = [
-          "employee",
-          "manager",
-          "hr",
-          "admin",
-          "super_admin",
-        ];
-        const oldIndex = roleHierarchy.indexOf(currentRole);
-        const newIndex = roleHierarchy.indexOf(formData.role);
-        const actionType = newIndex > oldIndex ? "promotion" : "demotion";
+        // Determine if promotion or demotion (for system roles)
+        const systemRoleHierarchy = ["employee", "manager", "hr", "admin", "super_admin"];
+        const oldIndex = systemRoleHierarchy.indexOf(currentRole);
+        const newIndex = systemRoleHierarchy.indexOf(formData.role);
+        
+        let actionType = "changed";
+        if (oldIndex !== -1 && newIndex !== -1) {
+          actionType = newIndex > oldIndex ? "promotion" : "demotion";
+        }
 
         // Log role change
         await supabase.from("activity_logs").insert({
           user_id: userId,
           performed_by: currentUser?.id,
           action_type: "role_changed",
-          description: `User role ${actionType}: ${currentRole} → ${formData.role}`,
+          description: `User role ${actionType}: ${oldRoleLabel} → ${newRoleLabel}`,
           metadata: {
             old_role: currentRole,
             new_role: formData.role,
+            old_role_label: oldRoleLabel,
+            new_role_label: newRoleLabel,
             action: actionType,
           },
         });
@@ -165,7 +189,7 @@ export default function EditUser() {
     }
   };
 
-  if (initialLoading) {
+  if (initialLoading || rolesLoading) {
     return <div className="animate-pulse">Loading user...</div>;
   }
 
@@ -225,13 +249,23 @@ export default function EditUser() {
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  {systemRoles.map((role) => (
+                  {allRoles.map((role) => (
                     <SelectItem key={role.value} value={role.value}>
-                      {role.label}
+                      <div className="flex items-center gap-2">
+                        {role.label}
+                        {role.type === "custom" && (
+                          <Badge variant="outline" className="text-xs">Custom</Badge>
+                        )}
+                      </div>
                     </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
+              {formData.role !== currentRole && (
+                <p className="text-sm text-amber-600 dark:text-amber-400">
+                  Role will be changed from "{allRoles.find(r => r.value === currentRole)?.label}" to "{allRoles.find(r => r.value === formData.role)?.label}"
+                </p>
+              )}
             </div>
 
             <div className="flex items-center space-x-2">
