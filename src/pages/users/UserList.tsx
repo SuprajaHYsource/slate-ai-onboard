@@ -12,12 +12,14 @@ import {
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import { Plus, Search, MoreVertical, Eye, Edit, Trash2 } from "lucide-react";
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Plus, Search, Edit, Trash2 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
 import { usePermissions } from "@/hooks/usePermissions";
@@ -42,6 +44,7 @@ interface UserProfile {
   is_active: boolean;
   last_sign_in: string | null;
   created_at: string;
+  profile_picture_url: string | null;
 }
 
 interface UserRoleInfo {
@@ -52,33 +55,50 @@ interface UserRoleInfo {
 export default function UserList() {
   const navigate = useNavigate();
   const { toast } = useToast();
-  const { hasPermission, hasRole } = usePermissions();
-  const { allRoles } = useAllRoles();
+  const { hasPermission } = usePermissions();
+  const { allRoles, loading: rolesLoading } = useAllRoles();
   const [users, setUsers] = useState<UserProfile[]>([]);
   const [filteredUsers, setFilteredUsers] = useState<UserProfile[]>([]);
-  const [userRoles, setUserRoles] = useState<Record<string, UserRoleInfo[]>>({});
+  const [userRoles, setUserRoles] = useState<Record<string, string>>({});
   const [searchTerm, setSearchTerm] = useState("");
+  const [roleFilter, setRoleFilter] = useState<string>("all");
+  const [statusFilter, setStatusFilter] = useState<string>("all");
   const [loading, setLoading] = useState(true);
   const [deleteUserId, setDeleteUserId] = useState<string | null>(null);
+  const [updatingRole, setUpdatingRole] = useState<string | null>(null);
 
   useEffect(() => {
-    if (hasPermission("users", "view")) {
+    if (hasPermission("users", "view") && !rolesLoading) {
       fetchUsers();
     }
-  }, [hasPermission]);
+  }, [hasPermission, rolesLoading]);
 
   useEffect(() => {
+    let filtered = users;
+    
+    // Search filter
     if (searchTerm) {
-      const filtered = users.filter(
+      filtered = filtered.filter(
         (user) =>
           user.full_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
           user.email.toLowerCase().includes(searchTerm.toLowerCase())
       );
-      setFilteredUsers(filtered);
-    } else {
-      setFilteredUsers(users);
     }
-  }, [searchTerm, users]);
+    
+    // Role filter
+    if (roleFilter && roleFilter !== "all") {
+      filtered = filtered.filter((user) => userRoles[user.user_id] === roleFilter);
+    }
+    
+    // Status filter
+    if (statusFilter && statusFilter !== "all") {
+      filtered = filtered.filter((user) => 
+        statusFilter === "active" ? user.is_active : !user.is_active
+      );
+    }
+    
+    setFilteredUsers(filtered);
+  }, [searchTerm, users, roleFilter, statusFilter, userRoles]);
 
   const fetchUsers = async () => {
     try {
@@ -92,15 +112,23 @@ export default function UserList() {
       setUsers(profiles || []);
       setFilteredUsers(profiles || []);
 
-      // Fetch roles for each user (including custom roles)
+      // Fetch roles for each user
       if (profiles) {
-        const rolesMap: Record<string, UserRoleInfo[]> = {};
+        const rolesMap: Record<string, string> = {};
         for (const profile of profiles) {
           const { data: roles } = await supabase
             .from("user_roles")
             .select("role, custom_role_id")
-            .eq("user_id", profile.user_id);
-          rolesMap[profile.user_id] = roles || [];
+            .eq("user_id", profile.user_id)
+            .maybeSingle();
+          
+          if (roles) {
+            if (roles.role) {
+              rolesMap[profile.user_id] = roles.role;
+            } else if (roles.custom_role_id) {
+              rolesMap[profile.user_id] = `custom_${roles.custom_role_id}`;
+            }
+          }
         }
         setUserRoles(rolesMap);
       }
@@ -115,15 +143,80 @@ export default function UserList() {
     }
   };
 
+  const handleRoleChange = async (userId: string, newRole: string) => {
+    const currentRole = userRoles[userId];
+    if (currentRole === newRole) return;
+
+    setUpdatingRole(userId);
+    
+    try {
+      const { data: { user: currentUser } } = await supabase.auth.getUser();
+
+      // Delete old role
+      await supabase.from("user_roles").delete().eq("user_id", userId);
+
+      // Insert new role
+      const isCustomRole = newRole.startsWith("custom_");
+      
+      if (isCustomRole) {
+        const customRoleId = newRole.replace("custom_", "");
+        const { error } = await supabase.from("user_roles").insert([{
+          user_id: userId,
+          custom_role_id: customRoleId,
+          assigned_by: currentUser?.id,
+        }]);
+        if (error) throw error;
+      } else {
+        const { error } = await supabase.from("user_roles").insert([{
+          user_id: userId,
+          role: newRole as any,
+          assigned_by: currentUser?.id,
+        }]);
+        if (error) throw error;
+      }
+
+      // Get role labels for logging
+      const oldRoleLabel = allRoles.find(r => r.value === currentRole)?.label || currentRole;
+      const newRoleLabel = allRoles.find(r => r.value === newRole)?.label || newRole;
+
+      // Log role change
+      await supabase.from("activity_logs").insert({
+        user_id: userId,
+        performed_by: currentUser?.id,
+        action_type: "role_changed",
+        description: `User role changed: ${oldRoleLabel} → ${newRoleLabel}`,
+        metadata: {
+          old_role: currentRole,
+          new_role: newRole,
+          old_role_label: oldRoleLabel,
+          new_role_label: newRoleLabel,
+        },
+      });
+
+      // Update local state
+      setUserRoles(prev => ({ ...prev, [userId]: newRole }));
+
+      toast({
+        title: "Success",
+        description: `Role changed to ${newRoleLabel}`,
+      });
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to update role",
+        variant: "destructive",
+      });
+    } finally {
+      setUpdatingRole(null);
+    }
+  };
+
   const handleDeleteUser = async () => {
     if (!deleteUserId) return;
 
     try {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
+      const { data: { user } } = await supabase.auth.getUser();
 
-      // Soft delete - mark as inactive
       const { error } = await supabase
         .from("profiles")
         .update({ is_active: false })
@@ -131,7 +224,6 @@ export default function UserList() {
 
       if (error) throw error;
 
-      // Log activity
       await supabase.from("activity_logs").insert({
         user_id: deleteUserId,
         performed_by: user?.id,
@@ -156,44 +248,20 @@ export default function UserList() {
     }
   };
 
-  const getRoleBadgeColor = (role: string, isCustom: boolean = false) => {
-    if (isCustom) {
-      return "bg-indigo-500/10 text-indigo-500";
-    }
-    const colors: Record<string, string> = {
-      super_admin: "bg-purple-500/10 text-purple-500",
-      admin: "bg-blue-500/10 text-blue-500",
-      hr: "bg-green-500/10 text-green-500",
-      manager: "bg-orange-500/10 text-orange-500",
-      employee: "bg-gray-500/10 text-gray-500",
-    };
-    return colors[role] || "bg-gray-500/10 text-gray-500";
+  const getInitials = (name: string) => {
+    return name
+      .split(" ")
+      .map((n) => n[0])
+      .join("")
+      .toUpperCase()
+      .slice(0, 2);
   };
 
-  const getRoleLabel = (roleInfo: UserRoleInfo) => {
-    if (roleInfo.role) {
-      const systemRole = allRoles.find(r => r.value === roleInfo.role);
-      return { label: systemRole?.label || roleInfo.role.replace("_", " "), isCustom: false };
-    }
-    if (roleInfo.custom_role_id) {
-      const customRole = allRoles.find(r => r.value === `custom_${roleInfo.custom_role_id}`);
-      return { label: customRole?.label || "Custom Role", isCustom: true };
-    }
-    return { label: "No Role", isCustom: false };
+  const getRoleLabel = (roleValue: string) => {
+    return allRoles.find(r => r.value === roleValue)?.label || roleValue;
   };
 
-  const getSignupMethodBadge = (method: string) => {
-    const colors: Record<string, string> = {
-      manual: "bg-blue-500/10 text-blue-500",
-      google: "bg-red-500/10 text-red-500",
-      microsoft: "bg-cyan-500/10 text-cyan-500",
-      github: "bg-gray-900/10 text-gray-900",
-      admin_created: "bg-purple-500/10 text-purple-500",
-    };
-    return colors[method] || colors.manual;
-  };
-
-  if (loading) {
+  if (loading || rolesLoading) {
     return <div className="animate-pulse">Loading users...</div>;
   }
 
@@ -212,7 +280,7 @@ export default function UserList() {
       <div className="flex justify-between items-center">
         <div>
           <h1 className="text-3xl font-bold text-foreground">User Management</h1>
-          <p className="text-muted-foreground">Manage system users and their roles</p>
+          <p className="text-muted-foreground">Manage users and assign roles across your organization</p>
         </div>
         {hasPermission("users", "create") && (
           <Button onClick={() => navigate("/users/add")}>
@@ -222,108 +290,156 @@ export default function UserList() {
         )}
       </div>
 
-      <div className="flex items-center gap-2">
-        <div className="relative flex-1 max-w-sm">
+      <div className="flex items-center gap-4 flex-wrap">
+        <div className="relative flex-1 min-w-[250px]">
           <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
           <Input
-            placeholder="Search users..."
+            placeholder="Search by name or email..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             className="pl-10"
           />
         </div>
+        <Select value={roleFilter} onValueChange={setRoleFilter}>
+          <SelectTrigger className="w-[180px]">
+            <SelectValue placeholder="Filter by role" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All Roles</SelectItem>
+            {allRoles.map((role) => (
+              <SelectItem key={role.value} value={role.value}>
+                {role.label}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        <Select value={statusFilter} onValueChange={setStatusFilter}>
+          <SelectTrigger className="w-[180px]">
+            <SelectValue placeholder="Filter by status" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All Status</SelectItem>
+            <SelectItem value="active">Active</SelectItem>
+            <SelectItem value="inactive">Inactive</SelectItem>
+          </SelectContent>
+        </Select>
       </div>
 
       <div className="border rounded-lg">
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>Name</TableHead>
-              <TableHead>Email</TableHead>
+              <TableHead>User</TableHead>
               <TableHead>Role</TableHead>
-              <TableHead>Signup Method</TableHead>
               <TableHead>Status</TableHead>
-              <TableHead>Last Sign In</TableHead>
+              <TableHead>Last Login</TableHead>
+              <TableHead>Created</TableHead>
               <TableHead className="text-right">Actions</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {filteredUsers.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={7} className="text-center text-muted-foreground">
+                <TableCell colSpan={6} className="text-center text-muted-foreground">
                   No users found
                 </TableCell>
               </TableRow>
             ) : (
               filteredUsers.map((user) => (
                 <TableRow key={user.id}>
-                  <TableCell className="font-medium">{user.full_name}</TableCell>
-                  <TableCell>{user.email}</TableCell>
                   <TableCell>
-                    <div className="flex flex-wrap gap-1">
-                      {userRoles[user.user_id]?.map((roleInfo, idx) => {
-                        const { label, isCustom } = getRoleLabel(roleInfo);
-                        return (
-                          <Badge
-                            key={idx}
-                            variant="secondary"
-                            className={getRoleBadgeColor(roleInfo.role || "", isCustom)}
-                          >
-                            {label}
-                            {isCustom && <span className="ml-1 text-xs opacity-70">★</span>}
-                          </Badge>
-                        );
-                      })}
+                    <div className="flex items-center gap-3">
+                      <Avatar className="h-10 w-10">
+                        <AvatarImage src={user.profile_picture_url || ""} />
+                        <AvatarFallback className="bg-primary/10 text-primary">
+                          {getInitials(user.full_name)}
+                        </AvatarFallback>
+                      </Avatar>
+                      <div>
+                        <p className="font-medium">{user.full_name}</p>
+                        <p className="text-sm text-muted-foreground">{user.email}</p>
+                      </div>
                     </div>
                   </TableCell>
                   <TableCell>
-                    <Badge className={getSignupMethodBadge(user.signup_method)}>
-                      {user.signup_method}
-                    </Badge>
+                    {hasPermission("users", "edit") ? (
+                      <Select
+                        value={userRoles[user.user_id] || "employee"}
+                        onValueChange={(value) => handleRoleChange(user.user_id, value)}
+                        disabled={updatingRole === user.user_id}
+                      >
+                        <SelectTrigger className="w-[160px]">
+                          <SelectValue>
+                            {updatingRole === user.user_id 
+                              ? "Updating..." 
+                              : getRoleLabel(userRoles[user.user_id] || "employee")}
+                          </SelectValue>
+                        </SelectTrigger>
+                        <SelectContent>
+                          {allRoles.map((role) => (
+                            <SelectItem key={role.value} value={role.value}>
+                              {role.label}
+                              {role.type === "custom" && (
+                                <span className="ml-1 text-xs opacity-70">★</span>
+                              )}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    ) : (
+                      <Badge variant="secondary">
+                        {getRoleLabel(userRoles[user.user_id] || "employee")}
+                      </Badge>
+                    )}
                   </TableCell>
                   <TableCell>
-                    <Badge variant={user.is_active ? "default" : "secondary"}>
-                      {user.is_active ? "Active" : "Inactive"}
+                    <Badge 
+                      variant={user.is_active ? "default" : "secondary"}
+                      className={user.is_active 
+                        ? "bg-green-500/10 text-green-600 hover:bg-green-500/20" 
+                        : "bg-gray-500/10 text-gray-500"
+                      }
+                    >
+                      {user.is_active ? "active" : "inactive"}
                     </Badge>
                   </TableCell>
-                  <TableCell>
+                  <TableCell className="text-muted-foreground">
                     {user.last_sign_in
-                      ? new Date(user.last_sign_in).toLocaleDateString()
+                      ? new Date(user.last_sign_in).toLocaleDateString("en-US", {
+                          month: "short",
+                          day: "numeric",
+                          year: "numeric",
+                        })
                       : "Never"}
                   </TableCell>
+                  <TableCell className="text-muted-foreground">
+                    {new Date(user.created_at).toLocaleDateString("en-US", {
+                      month: "short",
+                      day: "numeric",
+                      year: "numeric",
+                    })}
+                  </TableCell>
                   <TableCell className="text-right">
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="sm">
-                          <MoreVertical className="h-4 w-4" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        <DropdownMenuItem
-                          onClick={() => navigate(`/users/${user.user_id}`)}
+                    <div className="flex items-center justify-end gap-1">
+                      {hasPermission("users", "edit") && (
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => navigate(`/users/edit/${user.user_id}`)}
                         >
-                          <Eye className="h-4 w-4 mr-2" />
-                          View Details
-                        </DropdownMenuItem>
-                        {hasPermission("users", "edit") && (
-                          <DropdownMenuItem
-                            onClick={() => navigate(`/users/edit/${user.user_id}`)}
-                          >
-                            <Edit className="h-4 w-4 mr-2" />
-                            Edit
-                          </DropdownMenuItem>
-                        )}
-                        {hasPermission("users", "delete") && (
-                          <DropdownMenuItem
-                            onClick={() => setDeleteUserId(user.user_id)}
-                            className="text-destructive"
-                          >
-                            <Trash2 className="h-4 w-4 mr-2" />
-                            Deactivate
-                          </DropdownMenuItem>
-                        )}
-                      </DropdownMenuContent>
-                    </DropdownMenu>
+                          <Edit className="h-4 w-4" />
+                        </Button>
+                      )}
+                      {hasPermission("users", "delete") && (
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => setDeleteUserId(user.user_id)}
+                        >
+                          <Trash2 className="h-4 w-4 text-destructive" />
+                        </Button>
+                      )}
+                    </div>
                   </TableCell>
                 </TableRow>
               ))
