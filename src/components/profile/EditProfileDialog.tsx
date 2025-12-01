@@ -210,6 +210,9 @@ export default function EditProfileDialog({
         description: "Profile updated successfully",
       });
 
+      // Dispatch event to notify other components (like ProfileMenu) to refresh
+      window.dispatchEvent(new Event('profile-updated'));
+
       onSuccess();
       onOpenChange(false);
     } catch (error: any) {
