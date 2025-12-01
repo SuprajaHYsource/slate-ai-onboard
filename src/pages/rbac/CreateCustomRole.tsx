@@ -21,8 +21,8 @@ type Permission = {
 export default function CreateCustomRole() {
   const navigate = useNavigate();
   const { toast } = useToast();
-  const { hasRole } = usePermissions();
-  const [loading, setLoading] = useState(false);
+  const { hasRole, loading: permissionsLoading } = usePermissions();
+  const [saving, setSaving] = useState(false);
   const [permissions, setPermissions] = useState<Permission[]>([]);
   const [selectedPermissions, setSelectedPermissions] = useState<Set<string>>(new Set());
   const [formData, setFormData] = useState({
@@ -35,12 +35,15 @@ export default function CreateCustomRole() {
   const isSuperAdmin = hasRole("super_admin");
 
   useEffect(() => {
+    // Wait for permissions to load before checking access
+    if (permissionsLoading) return;
+    
     if (!isSuperAdmin) {
       navigate("/rbac");
       return;
     }
     fetchPermissions();
-  }, [isSuperAdmin]);
+  }, [isSuperAdmin, permissionsLoading]);
 
   const fetchPermissions = async () => {
     try {
@@ -96,7 +99,7 @@ export default function CreateCustomRole() {
       return;
     }
 
-    setLoading(true);
+    setSaving(true);
 
     try {
       const { data: { user } } = await supabase.auth.getUser();
@@ -158,7 +161,7 @@ export default function CreateCustomRole() {
         variant: "destructive",
       });
     } finally {
-      setLoading(false);
+      setSaving(false);
     }
   };
 
@@ -169,6 +172,14 @@ export default function CreateCustomRole() {
     acc[perm.module].push(perm);
     return acc;
   }, {} as Record<string, Permission[]>);
+
+  if (permissionsLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <p className="text-muted-foreground">Loading...</p>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6 animate-fade-in max-w-4xl">
@@ -288,8 +299,8 @@ export default function CreateCustomRole() {
         </Card>
 
         <div className="flex gap-2">
-          <Button type="submit" disabled={loading}>
-            {loading ? (
+          <Button type="submit" disabled={saving}>
+            {saving ? (
               <Loader2 className="h-4 w-4 mr-2 animate-spin" />
             ) : (
               <Save className="h-4 w-4 mr-2" />
