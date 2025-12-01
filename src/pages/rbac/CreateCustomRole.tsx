@@ -28,6 +28,8 @@ export default function CreateCustomRole() {
   const [formData, setFormData] = useState({
     name: "",
     description: "",
+    responsibilities: "",
+    rules: "",
   });
 
   const isSuperAdmin = hasRole("super_admin");
@@ -105,6 +107,8 @@ export default function CreateCustomRole() {
         .insert({
           name: formData.name.trim(),
           description: formData.description.trim() || null,
+          responsibilities: formData.responsibilities.trim() || null,
+          rules: formData.rules.trim() || null,
           created_by: user?.id,
           is_active: true,
         })
@@ -206,6 +210,28 @@ export default function CreateCustomRole() {
                 value={formData.description}
                 onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                 placeholder="Describe what this role can do..."
+                rows={2}
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="responsibilities">Responsibilities</Label>
+              <Textarea
+                id="responsibilities"
+                value={formData.responsibilities}
+                onChange={(e) => setFormData({ ...formData, responsibilities: e.target.value })}
+                placeholder="Define the key responsibilities for this role..."
+                rows={3}
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="rules">Rules</Label>
+              <Textarea
+                id="rules"
+                value={formData.rules}
+                onChange={(e) => setFormData({ ...formData, rules: e.target.value })}
+                placeholder="Specify any rules or restrictions for this role..."
                 rows={3}
               />
             </div>
