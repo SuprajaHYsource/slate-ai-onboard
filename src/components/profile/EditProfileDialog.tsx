@@ -43,6 +43,7 @@ export default function EditProfileDialog({
   const [previewUrl, setPreviewUrl] = useState<string | null>(
     profile?.profile_picture_url || null
   );
+  const [contactError, setContactError] = useState<string | null>(null);
   const [formData, setFormData] = useState({
     full_name: profile?.full_name || "",
     contact_number: profile?.contact_number || "",
@@ -50,6 +51,26 @@ export default function EditProfileDialog({
     date_of_birth: profile?.date_of_birth || "",
     address: profile?.address || "",
   });
+
+  // Validate contact number (allows +, digits, spaces, hyphens, parentheses)
+  const validateContactNumber = (value: string): string | null => {
+    if (!value) return null; // Empty is allowed
+    const phoneRegex = /^[\d\s\-+()]{7,20}$/;
+    if (!phoneRegex.test(value)) {
+      return "Please enter a valid phone number (7-20 digits, may include +, -, spaces, parentheses)";
+    }
+    // Check if there are at least 7 digits
+    const digitsOnly = value.replace(/\D/g, '');
+    if (digitsOnly.length < 7 || digitsOnly.length > 15) {
+      return "Phone number must contain 7-15 digits";
+    }
+    return null;
+  };
+
+  const handleContactChange = (value: string) => {
+    setFormData({ ...formData, contact_number: value });
+    setContactError(validateContactNumber(value));
+  };
 
   // Calculate max date (21 years ago from today)
   const getMaxDate = () => {
@@ -162,6 +183,19 @@ export default function EditProfileDialog({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    // Validate contact number before submission
+    const contactValidationError = validateContactNumber(formData.contact_number);
+    if (contactValidationError) {
+      setContactError(contactValidationError);
+      toast({
+        title: "Validation Error",
+        description: contactValidationError,
+        variant: "destructive",
+      });
+      return;
+    }
+    
     setLoading(true);
 
     try {
@@ -295,10 +329,13 @@ export default function EditProfileDialog({
               id="contact_number"
               type="tel"
               value={formData.contact_number}
-              onChange={(e) =>
-                setFormData({ ...formData, contact_number: e.target.value })
-              }
+              onChange={(e) => handleContactChange(e.target.value)}
+              placeholder="+1 (234) 567-8900"
+              className={contactError ? "border-destructive" : ""}
             />
+            {contactError && (
+              <p className="text-sm text-destructive">{contactError}</p>
+            )}
           </div>
 
           <div className="space-y-2">
