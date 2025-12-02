@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { InputOTP, InputOTPGroup, InputOTPSlot } from "@/components/ui/input-otp";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
@@ -133,51 +133,43 @@ const VerifyOTP = () => {
             <ArrowLeft className="w-4 h-4 mr-2" />
             Back to Sign Up
           </Button>
-          <CardTitle className="text-2xl font-bold">Verify Your Email</CardTitle>
+          <CardTitle className="text-2xl font-bold">Verify your email</CardTitle>
           <CardDescription>
             We've sent a 6-digit code to <strong>{email}</strong>
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <form onSubmit={handleVerifyOTP} className="space-y-4">
-            <div className="space-y-2">
-              <div className="relative">
-                <Mail className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                <Input
-                  placeholder="Enter 6-digit OTP"
-                  className="pl-10 text-center text-2xl tracking-widest"
-                  maxLength={6}
-                  value={otp}
-                  onChange={(e) => setOtp(e.target.value.replace(/\D/g, ""))}
-                  required
-                />
-              </div>
+            <div className="flex justify-center">
+              <InputOTP maxLength={6} value={otp} onChange={(val) => setOtp(val)}>
+                <InputOTPGroup>
+                  <InputOTPSlot index={0} />
+                  <InputOTPSlot index={1} />
+                  <InputOTPSlot index={2} />
+                  <InputOTPSlot index={3} />
+                  <InputOTPSlot index={4} />
+                  <InputOTPSlot index={5} />
+                </InputOTPGroup>
+              </InputOTP>
             </div>
 
             <Button type="submit" className="w-full" disabled={loading}>
-              {loading ? "Verifying..." : "Verify OTP"}
+              {loading ? "Verifying..." : "Verify Code"}
             </Button>
           </form>
 
           <div className="space-y-2">
-            <Button
-              variant="outline"
-              className="w-full"
-              onClick={handleResendOTP}
-              disabled={resendCooldown > 0}
-            >
-              {resendCooldown > 0
-                ? `Resend OTP (${resendCooldown}s)`
-                : "Resend OTP"}
-            </Button>
-
-            <Button
-              variant="ghost"
-              className="w-full"
-              onClick={() => navigate("/auth")}
-            >
-              Change Email
-            </Button>
+            <p className="text-center text-sm text-muted-foreground">
+              {resendCooldown > 0 ? `Resend code in ${resendCooldown}s` : ""}
+            </p>
+            <div className="flex justify-between items-center">
+              <Button variant="link" className="text-sm" onClick={() => navigate("/auth")}>
+                Wrong email? Go back
+              </Button>
+              <Button variant="ghost" onClick={handleResendOTP} disabled={resendCooldown > 0}>
+                Resend OTP
+              </Button>
+            </div>
           </div>
 
           <p className="text-sm text-center text-muted-foreground">

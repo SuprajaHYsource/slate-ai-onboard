@@ -3,28 +3,19 @@ import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+// Badge not used in Profile after removing roles/account sections
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Progress } from "@/components/ui/progress";
-import {
-  User,
-  Mail,
-  Phone,
-  Calendar,
-  MapPin,
-  Shield,
-  Edit,
-  Key,
-  Clock,
-  CheckCircle2,
-  AlertCircle,
-} from "lucide-react";
+import { AlertCircle } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useToast } from "@/hooks/use-toast";
 import EditProfileDialog from "@/components/profile/EditProfileDialog";
 import SetPasswordDialog from "@/components/profile/SetPasswordDialog";
-import ChangeEmailDialog from "@/components/profile/ChangeEmailDialog";
-import ProfileTimeline from "@/components/profile/ProfileTimeline";
+// ChangeEmailDialog entry moved to Settings; remove from Profile
+ 
 
 interface Profile {
   full_name: string;
@@ -45,12 +36,16 @@ export default function Profile() {
   const navigate = useNavigate();
   const { toast } = useToast();
   const [profile, setProfile] = useState<Profile | null>(null);
-  const [roles, setRoles] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [passwordDialogOpen, setPasswordDialogOpen] = useState(false);
-  const [emailDialogOpen, setEmailDialogOpen] = useState(false);
   const [completionPercentage, setCompletionPercentage] = useState(0);
+  const [formData, setFormData] = useState({ full_name: "", contact_number: "", address: "", date_of_birth: "" });
+  const [saving, setSaving] = useState(false);
+  const [contactError, setContactError] = useState<string | null>(null);
+  const [dobError, setDobError] = useState<string | null>(null);
+  const [workForm, setWorkForm] = useState({ employee_id: "", department: "", position: "", join_date: "", location: "" });
+  const [savingWork, setSavingWork] = useState(false);
 
   useEffect(() => {
     fetchProfile();
@@ -82,14 +77,21 @@ export default function Profile() {
       if (error) throw error;
 
       setProfile(profileData);
+      setFormData({
+        full_name: profileData.full_name || "",
+        contact_number: profileData.contact_number || "",
+        address: profileData.address || "",
+        date_of_birth: profileData.date_of_birth || "",
+      });
+      setWorkForm({
+        employee_id: (profileData as any).employee_id || "",
+        department: (profileData as any).department || "",
+        position: (profileData as any).position || "",
+        join_date: (profileData as any).join_date || "",
+        location: (profileData as any).location || "",
+      });
 
-      // Fetch roles
-      const { data: rolesData } = await (supabase as any)
-        .from("user_roles")
-        .select("role")
-        .eq("user_id", user.id);
-
-      setRoles(rolesData?.map((r: any) => r.role).filter(Boolean) || []);
+      
     } catch (error: any) {
       toast({
         title: "Error",
@@ -98,6 +100,80 @@ export default function Profile() {
       });
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleSaveWork = async () => {
+    if (!profile) return;
+    setSavingWork(true);
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      const { error } = await (supabase as any)
+        .from("profiles")
+        .update({
+          employee_id: workForm.employee_id || null,
+          department: workForm.department || null,
+          position: workForm.position || null,
+          join_date: workForm.join_date || null,
+          location: workForm.location || null,
+        })
+        .eq("user_id", user?.id);
+      if (error) throw error;
+      toast({ title: "Saved", description: "Work details updated" });
+      await fetchProfile();
+    } catch (error: any) {
+      toast({ title: "Error", description: error.message, variant: "destructive" });
+    } finally {
+      setSavingWork(false);
+    }
+  };
+
+  const handleSave = async () => {
+    if (!profile) return;
+    setSaving(true);
+    try {
+      // Validate phone
+      const phoneRegex = /^[\d\s\-+()]{7,20}$/;
+      const digitsOnly = (formData.contact_number || "").replace(/\D/g, "");
+      let phoneError: string | null = null;
+      if (formData.contact_number && (!phoneRegex.test(formData.contact_number) || digitsOnly.length < 7 || digitsOnly.length > 15)) {
+        phoneError = "Please enter a valid phone number (7-15 digits)";
+      }
+      setContactError(phoneError);
+
+      // Validate DOB: must be 21+ years old
+      let dobValidationError: string | null = null;
+      if (formData.date_of_birth) {
+        const dob = new Date(formData.date_of_birth);
+        const minDate = new Date();
+        minDate.setFullYear(minDate.getFullYear() - 21);
+        if (dob > minDate) {
+          dobValidationError = "You must be at least 21 years old";
+        }
+      }
+      setDobError(dobValidationError);
+
+      if (phoneError || dobValidationError) {
+        throw new Error(phoneError || dobValidationError || "Invalid input");
+      }
+
+      const { data: { user } } = await supabase.auth.getUser();
+      const { error } = await (supabase as any)
+        .from("profiles")
+        .update({
+          full_name: formData.full_name,
+          contact_number: formData.contact_number || null,
+          address: formData.address || null,
+          date_of_birth: formData.date_of_birth || null,
+        })
+        .eq("user_id", user?.id);
+      if (error) throw error;
+      toast({ title: "Saved", description: "Profile updated successfully" });
+      await fetchProfile();
+    } catch (error: any) {
+      toast({ title: "Error", description: error.message, variant: "destructive" });
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -155,16 +231,7 @@ export default function Profile() {
     };
   };
 
-  const getRoleBadgeColor = (role: string) => {
-    const colors: Record<string, string> = {
-      super_admin: "bg-purple-500/10 text-purple-500",
-      admin: "bg-blue-500/10 text-blue-500",
-      hr: "bg-green-500/10 text-green-500",
-      manager: "bg-orange-500/10 text-orange-500",
-      employee: "bg-gray-500/10 text-gray-500",
-    };
-    return colors[role] || "bg-gray-500/10 text-gray-500";
-  };
+  
 
   if (loading) {
     return (
@@ -190,17 +257,9 @@ export default function Profile() {
 
   return (
     <div className="space-y-6 animate-fade-in">
-      <div className="flex justify-between items-center">
-        <div>
-          <h1 className="text-3xl font-bold text-foreground">
-            Welcome, {profile.full_name.split(" ")[0]}!
-          </h1>
-          <p className="text-muted-foreground">Manage your personal information</p>
-        </div>
-        <Button onClick={() => setEditDialogOpen(true)}>
-          <Edit className="w-4 h-4 mr-2" />
-          Edit Profile
-        </Button>
+      <div>
+        <h1 className="text-3xl font-bold text-foreground">My Profile</h1>
+        <p className="text-muted-foreground">View and manage your personal information</p>
       </div>
 
       {/* SSO Password Setup Alert */}
@@ -240,180 +299,98 @@ export default function Profile() {
         </CardContent>
       </Card>
 
-      <div className="grid gap-6 md:grid-cols-2">
-        {/* Basic Information */}
-        <Card>
+      <div className="grid gap-6 md:grid-cols-3">
+        {/* Left */}
+        <Card className="md:col-span-1">
           <CardHeader>
-            <CardTitle className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <User className="h-5 w-5" />
-                Basic Information
-              </div>
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={() => setEditDialogOpen(true)}
-                className="h-8 w-8"
-              >
-                <Edit className="h-4 w-4" />
-              </Button>
-            </CardTitle>
+            <CardTitle>Profile Picture</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="flex items-center gap-4">
-              <Avatar className="h-16 w-16">
+            <div className="flex flex-col items-center gap-4">
+              <Avatar className="h-24 w-24">
                 <AvatarImage src={profile.profile_picture_url || undefined} />
-                <AvatarFallback className="bg-primary/10 text-primary text-2xl font-bold">
+                <AvatarFallback className="bg-primary/10 text-primary text-3xl font-bold">
                   {profile.full_name.charAt(0).toUpperCase()}
                 </AvatarFallback>
               </Avatar>
-              <div>
+              <div className="text-center">
                 <p className="font-semibold text-lg">{profile.full_name}</p>
-                <div className="flex items-center gap-2 mt-1">
-                  <Badge className={signupInfo.color}>
-                    <span className="mr-1">{signupInfo.icon}</span>
-                    {signupInfo.label}
-                  </Badge>
-                </div>
+                <p className="text-sm text-muted-foreground">{profile.email}</p>
               </div>
-            </div>
-
-            <div className="space-y-3">
-              <div className="flex items-start gap-3">
-                <Mail className="h-4 w-4 mt-1 text-muted-foreground" />
-                <div className="flex-1">
-                  <p className="text-sm text-muted-foreground">Email</p>
-                  <div className="flex items-center gap-2">
-                    <p className="font-medium">{profile.email}</p>
-                    {profile.email_verified && (
-                      <CheckCircle2 className="h-4 w-4 text-green-500" />
-                    )}
-                  </div>
-                  <Button
-                    variant="link"
-                    size="sm"
-                    className="p-0 h-auto"
-                    onClick={() => setEmailDialogOpen(true)}
-                  >
-                    Change Email
-                  </Button>
-                </div>
-              </div>
-
-              <div className="flex items-start gap-3">
-                <Phone className="h-4 w-4 mt-1 text-muted-foreground" />
-                <div>
-                  <p className="text-sm text-muted-foreground">Contact Number</p>
-                  <p className="font-medium">{profile.contact_number || "Not set"}</p>
-                </div>
-              </div>
-
-              <div className="flex items-start gap-3">
-                <User className="h-4 w-4 mt-1 text-muted-foreground" />
-                <div>
-                  <p className="text-sm text-muted-foreground">Gender</p>
-                  <p className="font-medium">{profile.gender || "Not set"}</p>
-                </div>
-              </div>
-
-              <div className="flex items-start gap-3">
-                <Calendar className="h-4 w-4 mt-1 text-muted-foreground" />
-                <div>
-                  <p className="text-sm text-muted-foreground">Date of Birth</p>
-                  <p className="font-medium">
-                    {profile.date_of_birth
-                      ? new Date(profile.date_of_birth).toLocaleDateString()
-                      : "Not set"}
-                  </p>
-                </div>
-              </div>
-
-              <div className="flex items-start gap-3">
-                <MapPin className="h-4 w-4 mt-1 text-muted-foreground" />
-                <div>
-                  <p className="text-sm text-muted-foreground">Address</p>
-                  <p className="font-medium">{profile.address || "Not set"}</p>
-                </div>
-              </div>
+              <Button variant="outline" size="sm" onClick={() => setEditDialogOpen(true)}>Edit Profile</Button>
             </div>
           </CardContent>
         </Card>
 
-        {/* Roles & Account Info */}
-        <div className="space-y-6">
+        {/* Right */}
+        <div className="md:col-span-2 space-y-6">
           <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Shield className="h-5 w-5" />
-                Roles & Permissions
-              </CardTitle>
-            </CardHeader>
             <CardContent>
-              <div className="flex flex-wrap gap-2">
-                {roles.map((role) => (
-                  <Badge key={role} className={getRoleBadgeColor(role)}>
-                    {role.replace("_", " ").toUpperCase()}
-                  </Badge>
-                ))}
-              </div>
+              <Tabs defaultValue="personal" className="w-full">
+                <TabsList className="w-full max-w-md grid grid-cols-2">
+                  <TabsTrigger value="personal">Personal Info</TabsTrigger>
+                  <TabsTrigger value="work">Work Details</TabsTrigger>
+                </TabsList>
+                <TabsContent value="personal" className="pt-4 space-y-4">
+                  <div className="grid gap-4">
+                    <div>
+                      <Label>Full Name</Label>
+                      <Input value={formData.full_name} onChange={(e) => setFormData({ ...formData, full_name: e.target.value })} />
+                    </div>
+                    <div>
+                      <Label>Email</Label>
+                      <Input value={profile.email} disabled />
+                    </div>
+                    <div>
+                      <Label>Phone Number</Label>
+                      <Input value={formData.contact_number} onChange={(e) => setFormData({ ...formData, contact_number: e.target.value })} className={contactError ? "border-destructive" : ""} />
+                      {contactError && <p className="text-sm text-destructive mt-1">{contactError}</p>}
+                    </div>
+                    <div>
+                      <Label>Date of Birth (Must be 21+ years old)</Label>
+                      <Input type="date" value={formData.date_of_birth} onChange={(e) => setFormData({ ...formData, date_of_birth: e.target.value })} max={new Date(new Date().setFullYear(new Date().getFullYear() - 21)).toISOString().split("T")[0]} />
+                      {dobError && <p className="text-sm text-destructive mt-1">{dobError}</p>}
+                    </div>
+                    <div>
+                      <Label>Address</Label>
+                      <Input value={formData.address} onChange={(e) => setFormData({ ...formData, address: e.target.value })} />
+                    </div>
+                  </div>
+                  <Button onClick={handleSave} disabled={saving} className="mt-2">{saving ? "Saving..." : "Save Changes"}</Button>
+                </TabsContent>
+                <TabsContent value="work" className="pt-4">
+                  <div className="grid gap-4">
+                    <div>
+                      <Label>Employee ID</Label>
+                      <Input value={workForm.employee_id} onChange={(e) => setWorkForm({ ...workForm, employee_id: e.target.value })} />
+                    </div>
+                    <div>
+                      <Label>Department</Label>
+                      <Input value={workForm.department} onChange={(e) => setWorkForm({ ...workForm, department: e.target.value })} />
+                    </div>
+                    <div>
+                      <Label>Position</Label>
+                      <Input value={workForm.position} onChange={(e) => setWorkForm({ ...workForm, position: e.target.value })} />
+                    </div>
+                    <div>
+                      <Label>Join Date</Label>
+                      <Input type="date" value={workForm.join_date} onChange={(e) => setWorkForm({ ...workForm, join_date: e.target.value })} />
+                    </div>
+                    <div>
+                      <Label>Location</Label>
+                      <Input value={workForm.location} onChange={(e) => setWorkForm({ ...workForm, location: e.target.value })} />
+                    </div>
+                  </div>
+                  <Button onClick={handleSaveWork} disabled={savingWork} className="mt-2">{savingWork ? "Saving..." : "Save Work Details"}</Button>
+                </TabsContent>
+              </Tabs>
             </CardContent>
           </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Clock className="h-5 w-5" />
-                Account Information
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              <div>
-                <p className="text-sm text-muted-foreground">Account Created</p>
-                <p className="font-medium">
-                  {new Date(profile.created_at).toLocaleDateString()}
-                </p>
-              </div>
-              <div>
-                <p className="text-sm text-muted-foreground">Last Sign In</p>
-                <p className="font-medium">
-                  {profile.last_sign_in
-                    ? new Date(profile.last_sign_in).toLocaleString()
-                    : "Never"}
-                </p>
-              </div>
-              <div>
-                <p className="text-sm text-muted-foreground">Password Status</p>
-                <Badge variant={profile.password_set ? "default" : "secondary"}>
-                  {profile.password_set ? "Set" : "Not Set"}
-                </Badge>
-              </div>
-            </CardContent>
-          </Card>
-
-          {!showPasswordSetup && (
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Key className="h-5 w-5" />
-                  Security
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <Button
-                  variant="outline"
-                  className="w-full"
-                  onClick={() => setPasswordDialogOpen(true)}
-                >
-                  Change Password
-                </Button>
-              </CardContent>
-            </Card>
-          )}
+          
         </div>
       </div>
 
-      {/* Profile Timeline */}
-      <ProfileTimeline />
+      
 
       {/* Dialogs */}
       <EditProfileDialog
@@ -426,12 +403,6 @@ export default function Profile() {
         open={passwordDialogOpen}
         onOpenChange={setPasswordDialogOpen}
         isFirstTime={showPasswordSetup}
-        onSuccess={fetchProfile}
-      />
-      <ChangeEmailDialog
-        open={emailDialogOpen}
-        onOpenChange={setEmailDialogOpen}
-        currentEmail={profile.email}
         onSuccess={fetchProfile}
       />
     </div>

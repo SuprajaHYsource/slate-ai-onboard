@@ -3,7 +3,6 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
 import {
   Dialog,
   DialogContent,
@@ -12,16 +11,11 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+ 
 import { useToast } from "@/hooks/use-toast";
 import { Loader2, Upload, X } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Slider } from "@/components/ui/slider";
 
 interface EditProfileDialogProps {
   open: boolean;
@@ -43,41 +37,16 @@ export default function EditProfileDialog({
   const [previewUrl, setPreviewUrl] = useState<string | null>(
     profile?.profile_picture_url || null
   );
-  const [contactError, setContactError] = useState<string | null>(null);
-  const [formData, setFormData] = useState({
-    full_name: profile?.full_name || "",
-    contact_number: profile?.contact_number || "",
-    gender: profile?.gender || "",
-    date_of_birth: profile?.date_of_birth || "",
-    address: profile?.address || "",
-  });
+  const [enableCrop, setEnableCrop] = useState(false);
+  const [cropScale, setCropScale] = useState(1);
+  const [cropOffset, setCropOffset] = useState({ x: 0, y: 0 });
+  const [dragging, setDragging] = useState(false);
+  const [dragStart, setDragStart] = useState<{ x: number; y: number } | null>(null);
+  
 
-  // Validate contact number (allows +, digits, spaces, hyphens, parentheses)
-  const validateContactNumber = (value: string): string | null => {
-    if (!value) return null; // Empty is allowed
-    const phoneRegex = /^[\d\s\-+()]{7,20}$/;
-    if (!phoneRegex.test(value)) {
-      return "Please enter a valid phone number (7-20 digits, may include +, -, spaces, parentheses)";
-    }
-    // Check if there are at least 7 digits
-    const digitsOnly = value.replace(/\D/g, '');
-    if (digitsOnly.length < 7 || digitsOnly.length > 15) {
-      return "Phone number must contain 7-15 digits";
-    }
-    return null;
-  };
+  
 
-  const handleContactChange = (value: string) => {
-    setFormData({ ...formData, contact_number: value });
-    setContactError(validateContactNumber(value));
-  };
-
-  // Calculate max date (21 years ago from today)
-  const getMaxDate = () => {
-    const today = new Date();
-    const maxDate = new Date(today.getFullYear() - 21, today.getMonth(), today.getDate());
-    return maxDate.toISOString().split('T')[0];
-  };
+  
 
   const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -92,6 +61,9 @@ export default function EditProfileDialog({
       }
       setProfileImage(file);
       setPreviewUrl(URL.createObjectURL(file));
+      setEnableCrop(true);
+      setCropScale(1);
+      setCropOffset({ x: 0, y: 0 });
     }
   };
 
@@ -157,9 +129,18 @@ export default function EditProfileDialog({
       const fileName = `${Date.now()}.${fileExt}`;
       const filePath = `${userId}/${fileName}`;
 
+      let fileToUpload: File = profileImage;
+      // If cropping is enabled and previewUrl set, render crop to canvas and convert to file
+      if (enableCrop && previewUrl) {
+        const cropped = await cropImage(previewUrl, cropScale, cropOffset);
+        if (cropped) {
+          fileToUpload = cropped;
+        }
+      }
+
       const { error: uploadError } = await supabase.storage
         .from("profile-pictures")
-        .upload(filePath, profileImage);
+        .upload(filePath, fileToUpload);
 
       if (uploadError) throw uploadError;
 
@@ -181,21 +162,36 @@ export default function EditProfileDialog({
     }
   };
 
+  const cropImage = (src: string, scale: number, offset: { x: number; y: number }): Promise<File | null> => {
+    return new Promise((resolve) => {
+      const img = new Image();
+      img.crossOrigin = "anonymous";
+      img.onload = () => {
+        const size = 400; // output square size
+        const canvas = document.createElement("canvas");
+        canvas.width = size;
+        canvas.height = size;
+        const ctx = canvas.getContext("2d");
+        if (!ctx) return resolve(null);
+        const scaledW = img.width * scale;
+        const scaledH = img.height * scale;
+        const drawX = (size - scaledW) / 2 + offset.x;
+        const drawY = (size - scaledH) / 2 + offset.y;
+        ctx.imageSmoothingQuality = "high";
+        ctx.drawImage(img, drawX, drawY, scaledW, scaledH);
+        canvas.toBlob((blob) => {
+          if (!blob) return resolve(null);
+          const file = new File([blob], `crop_${Date.now()}.png`, { type: "image/png" });
+          resolve(file);
+        }, "image/png", 0.92);
+      };
+      img.onerror = () => resolve(null);
+      img.src = src;
+    });
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
-    // Validate contact number before submission
-    const contactValidationError = validateContactNumber(formData.contact_number);
-    if (contactValidationError) {
-      setContactError(contactValidationError);
-      toast({
-        title: "Validation Error",
-        description: contactValidationError,
-        variant: "destructive",
-      });
-      return;
-    }
-    
     setLoading(true);
 
     try {
@@ -215,10 +211,7 @@ export default function EditProfileDialog({
       }
 
       const { error } = await (supabase.from("profiles") as any)
-        .update({
-          ...formData,
-          profile_picture_url,
-        })
+        .update({ profile_picture_url })
         .eq("user_id", user.id);
 
       if (error) throw error;
@@ -232,7 +225,7 @@ export default function EditProfileDialog({
         module: "profile",
         status: "success",
         metadata: {
-          fields_updated: Object.keys(formData),
+          fields_updated: ["profile_picture_url"],
           image_changed: !!profileImage,
         },
       });
@@ -309,79 +302,52 @@ export default function EditProfileDialog({
                 )}
               </div>
             </div>
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="full_name">Full Name</Label>
-            <Input
-              id="full_name"
-              value={formData.full_name}
-              onChange={(e) =>
-                setFormData({ ...formData, full_name: e.target.value })
-              }
-              required
-            />
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="contact_number">Contact Number</Label>
-            <Input
-              id="contact_number"
-              type="tel"
-              value={formData.contact_number}
-              onChange={(e) => handleContactChange(e.target.value)}
-              placeholder="+1 (234) 567-8900"
-              className={contactError ? "border-destructive" : ""}
-            />
-            {contactError && (
-              <p className="text-sm text-destructive">{contactError}</p>
+            {previewUrl && enableCrop && (
+              <div className="mt-4">
+                <div
+                  className="relative w-56 h-56 rounded-lg border overflow-hidden bg-muted"
+                  onMouseDown={(e) => {
+                    setDragging(true);
+                    setDragStart({ x: e.clientX, y: e.clientY });
+                  }}
+                  onMouseUp={() => {
+                    setDragging(false);
+                    setDragStart(null);
+                  }}
+                  onMouseLeave={() => {
+                    setDragging(false);
+                    setDragStart(null);
+                  }}
+                  onMouseMove={(e) => {
+                    if (!dragging || !dragStart) return;
+                    const dx = e.clientX - dragStart.x;
+                    const dy = e.clientY - dragStart.y;
+                    setCropOffset((prev) => ({ x: prev.x + dx, y: prev.y + dy }));
+                    setDragStart({ x: e.clientX, y: e.clientY });
+                  }}
+                >
+                  <img
+                    src={previewUrl}
+                    alt="Crop"
+                    style={{
+                      position: "absolute",
+                      left: "50%",
+                      top: "50%",
+                      transform: `translate(-50%, -50%) translate(${cropOffset.x}px, ${cropOffset.y}px) scale(${cropScale})`,
+                      userSelect: "none",
+                      pointerEvents: "none",
+                    }}
+                  />
+                </div>
+                <div className="mt-3">
+                  <Label>Zoom</Label>
+                  <Slider value={[cropScale]} min={0.5} max={3} step={0.01} onValueChange={(v) => setCropScale(v[0])} />
+                </div>
+              </div>
             )}
           </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="gender">Gender</Label>
-            <Select
-              value={formData.gender}
-              onValueChange={(value) =>
-                setFormData({ ...formData, gender: value })
-              }
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="Select gender" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="male">Male</SelectItem>
-                <SelectItem value="female">Female</SelectItem>
-                <SelectItem value="other">Other</SelectItem>
-                <SelectItem value="prefer_not_to_say">Prefer not to say</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="date_of_birth">Date of Birth (Must be 21+ years old)</Label>
-            <Input
-              id="date_of_birth"
-              type="date"
-              value={formData.date_of_birth}
-              max={getMaxDate()}
-              onChange={(e) =>
-                setFormData({ ...formData, date_of_birth: e.target.value })
-              }
-            />
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="address">Address</Label>
-            <Textarea
-              id="address"
-              value={formData.address}
-              onChange={(e) =>
-                setFormData({ ...formData, address: e.target.value })
-              }
-              rows={3}
-            />
-          </div>
+          
 
           <DialogFooter>
             <Button

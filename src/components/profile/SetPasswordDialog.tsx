@@ -41,6 +41,9 @@ export default function SetPasswordDialog({
     setLoading(true);
 
     try {
+      if (!isFirstTime && formData.currentPassword && formData.currentPassword === formData.newPassword) {
+        throw new Error("Current password and new password should not be the same");
+      }
       if (formData.newPassword !== formData.confirmPassword) {
         throw new Error("Passwords do not match");
       }

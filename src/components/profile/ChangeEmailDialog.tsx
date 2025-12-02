@@ -2,6 +2,7 @@ import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { InputOTP, InputOTPGroup, InputOTPSlot } from "@/components/ui/input-otp";
 import { Label } from "@/components/ui/label";
 import {
   Dialog,
@@ -18,7 +19,7 @@ interface ChangeEmailDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   currentEmail: string;
-  onSuccess: () => void;
+  onSuccess: (updatedEmail: string) => void;
 }
 
 export default function ChangeEmailDialog({
@@ -146,7 +147,7 @@ export default function ChangeEmailDialog({
         description: "Email changed successfully",
       });
 
-      onSuccess();
+      onSuccess(newEmail);
       onOpenChange(false);
       setStep("input");
       setNewEmail("");
@@ -224,14 +225,18 @@ export default function ChangeEmailDialog({
 
             <div className="space-y-2">
               <Label htmlFor="oldOtp">Enter verification code</Label>
-              <Input
-                id="oldOtp"
-                value={oldOtp}
-                onChange={(e) => setOldOtp(e.target.value)}
-                placeholder="000000"
-                maxLength={6}
-                required
-              />
+              <div className="flex justify-center">
+                <InputOTP maxLength={6} value={oldOtp} onChange={(val) => setOldOtp(val)}>
+                  <InputOTPGroup>
+                    <InputOTPSlot index={0} />
+                    <InputOTPSlot index={1} />
+                    <InputOTPSlot index={2} />
+                    <InputOTPSlot index={3} />
+                    <InputOTPSlot index={4} />
+                    <InputOTPSlot index={5} />
+                  </InputOTPGroup>
+                </InputOTP>
+              </div>
             </div>
 
             <Button
@@ -280,14 +285,18 @@ export default function ChangeEmailDialog({
 
             <div className="space-y-2">
               <Label htmlFor="newOtp">Enter verification code</Label>
-              <Input
-                id="newOtp"
-                value={newOtp}
-                onChange={(e) => setNewOtp(e.target.value)}
-                placeholder="000000"
-                maxLength={6}
-                required
-              />
+              <div className="flex justify-center">
+                <InputOTP maxLength={6} value={newOtp} onChange={(val) => setNewOtp(val)}>
+                  <InputOTPGroup>
+                    <InputOTPSlot index={0} />
+                    <InputOTPSlot index={1} />
+                    <InputOTPSlot index={2} />
+                    <InputOTPSlot index={3} />
+                    <InputOTPSlot index={4} />
+                    <InputOTPSlot index={5} />
+                  </InputOTPGroup>
+                </InputOTP>
+              </div>
             </div>
 
             <Button

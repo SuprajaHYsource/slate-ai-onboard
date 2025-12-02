@@ -19,7 +19,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Plus, Search, Edit, Trash2, Mail } from "lucide-react";
+import { Plus, Search, Edit, Trash2, Mail, MoreVertical, Eye, KeyRound } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
 import { usePermissions } from "@/hooks/usePermissions";
@@ -66,6 +66,7 @@ export default function UserList() {
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [loading, setLoading] = useState(true);
   const [deleteUserId, setDeleteUserId] = useState<string | null>(null);
+  const [activateUserId, setActivateUserId] = useState<string | null>(null);
   const [updatingRole, setUpdatingRole] = useState<string | null>(null);
   const [inviteOpen, setInviteOpen] = useState(false);
   const [inviteEmails, setInviteEmails] = useState("");
@@ -259,6 +260,69 @@ export default function UserList() {
     }
   };
 
+  const handleActivateUser = async () => {
+    if (!activateUserId) return;
+
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+
+      const { error } = await supabase
+        .from("profiles")
+        .update({ is_active: true })
+        .eq("user_id", activateUserId);
+
+      if (error) throw error;
+
+      await supabase.from("activity_logs").insert({
+        user_id: activateUserId,
+        performed_by: user?.id,
+        action_type: "user_activated",
+        description: "User account activated",
+        module: "users",
+        target: activateUserId,
+        status: "success",
+      });
+
+      toast({
+        title: "Success",
+        description: "User activated successfully",
+      });
+
+      fetchUsers();
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
+    } finally {
+      setActivateUserId(null);
+    }
+  };
+
+  const handleSendResetOTP = async (email: string, userId: string) => {
+    try {
+      const { error } = await supabase.functions.invoke("send-otp", {
+        body: { email, flow: "forgot_password" },
+      });
+      if (error) throw error;
+
+      await supabase.from("activity_logs").insert({
+        user_id: userId,
+        performed_by: (await supabase.auth.getUser()).data.user?.id,
+        action_type: "password_reset_initiated",
+        description: `Sent password reset OTP to ${email}`,
+        module: "users",
+        target: userId,
+        status: "success",
+      });
+
+      toast({ title: "Reset OTP sent", description: `OTP sent to ${email}` });
+    } catch (error: any) {
+      toast({ title: "Error", description: error.message || "Failed to send OTP", variant: "destructive" });
+    }
+  };
+
   const getInitials = (name: string) => {
     return name
       .split(" ")
@@ -439,26 +503,38 @@ export default function UserList() {
                     })}
                   </TableCell>
                   <TableCell className="text-right">
-                    <div className="flex items-center justify-end gap-1">
-                      {hasPermission("users", "edit") && (
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => navigate(`/users/edit/${user.user_id}`)}
-                        >
-                          <Edit className="h-4 w-4" />
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="ghost" size="icon">
+                          <MoreVertical className="h-4 w-4" />
                         </Button>
-                      )}
-                      {hasPermission("users", "delete") && (
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => setDeleteUserId(user.user_id)}
-                        >
-                          <Trash2 className="h-4 w-4 text-destructive" />
-                        </Button>
-                      )}
-                    </div>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        <DropdownMenuItem onClick={() => navigate(`/users/${user.user_id}`)}>
+                          <Eye className="mr-2 h-4 w-4" /> View Details
+                        </DropdownMenuItem>
+                        {hasPermission("users", "edit") && (
+                          <DropdownMenuItem onClick={() => navigate(`/users/edit/${user.user_id}`)}>
+                            <Edit className="mr-2 h-4 w-4" /> Edit User
+                          </DropdownMenuItem>
+                        )}
+                        {hasPermission("users", "edit") && (
+                          <DropdownMenuItem onClick={() => handleSendResetOTP(user.email, user.user_id)}>
+                            <KeyRound className="mr-2 h-4 w-4" /> Send Reset OTP
+                          </DropdownMenuItem>
+                        )}
+                        {hasPermission("users", "delete") && (
+                          <DropdownMenuItem onClick={() => (user.is_active ? setDeleteUserId(user.user_id) : setActivateUserId(user.user_id))}>
+                            {user.is_active ? (
+                              <Trash2 className="mr-2 h-4 w-4 text-destructive" />
+                            ) : (
+                              <Edit className="mr-2 h-4 w-4" />
+                            )}
+                            {user.is_active ? "Deactivate" : "Activate"}
+                          </DropdownMenuItem>
+                        )}
+                      </DropdownMenuContent>
+                    </DropdownMenu>
                   </TableCell>
                 </TableRow>
               ))
@@ -480,6 +556,23 @@ export default function UserList() {
             <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction onClick={handleDeleteUser}>
               Deactivate
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog open={!!activateUserId} onOpenChange={() => setActivateUserId(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Activate User</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will mark the account as active and allow the user to sign in.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleActivateUser}>
+              Activate
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -596,3 +689,9 @@ export default function UserList() {
     </div>
   );
 }
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";

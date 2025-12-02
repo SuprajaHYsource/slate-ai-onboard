@@ -243,7 +243,7 @@ export const ProfileMenu = ({ open, onOpenChange }: ProfileMenuProps) => {
             onClick={() => navigate("/settings")}
           >
             <Settings className="mr-3 h-5 w-5 text-muted-foreground" />
-            <span className="font-medium">Account Settings</span>
+            <span className="font-medium">{profile.roles.includes("super_admin") ? "System Settings" : "Account Settings"}</span>
           </DropdownMenuItem>
 
           <DropdownMenuItem

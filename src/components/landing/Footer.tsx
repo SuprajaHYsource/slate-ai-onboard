@@ -1,4 +1,8 @@
+import { useState } from "react";
+import CookiePreferences from "@/components/cookies/CookiePreferences";
+
 const Footer = () => {
+  const [cookiePrefsOpen, setCookiePrefsOpen] = useState(false);
   return (
     <footer className="bg-card border-t py-12">
       <div className="container px-4">
@@ -25,9 +29,10 @@ const Footer = () => {
           <div>
             <h4 className="font-semibold mb-4">Legal</h4>
             <ul className="space-y-2 text-muted-foreground">
-              <li><a href="#" className="hover:text-primary transition-colors">Privacy Policy</a></li>
-              <li><a href="#" className="hover:text-primary transition-colors">Terms of Service</a></li>
-              <li><a href="#" className="hover:text-primary transition-colors">Cookie Policy</a></li>
+              <li><a href="/privacy-policy" className="hover:text-primary transition-colors">Privacy Policy</a></li>
+              <li><a href="/terms-and-conditions" className="hover:text-primary transition-colors">Terms & Conditions</a></li>
+              <li><a href="/cookie-policy" className="hover:text-primary transition-colors">Cookie Policy</a></li>
+              <li><button onClick={() => setCookiePrefsOpen(true)} className="hover:text-primary transition-colors">Manage Cookie Preferences</button></li>
             </ul>
           </div>
         </div>
@@ -36,6 +41,7 @@ const Footer = () => {
           <p>© {new Date().getFullYear()} Hinfinity. All rights reserved.</p>
         </div>
       </div>
+      <CookiePreferences open={cookiePrefsOpen} onOpenChange={setCookiePrefsOpen} />
     </footer>
   );
 };

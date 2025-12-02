@@ -7,11 +7,12 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { Mail, Lock, ArrowLeft, Eye, EyeOff, User, Calendar, ImageIcon } from "lucide-react";
+import { InputOTP, InputOTPGroup, InputOTPSlot } from "@/components/ui/input-otp";
 import { Progress } from "@/components/ui/progress";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Logo } from "@/components/Logo";
 
-type AuthStep = "email" | "password" | "otp" | "profile";
+type AuthStep = "email" | "password" | "signup" | "otp" | "profile";
 
 const Auth = () => {
   const navigate = useNavigate();
@@ -27,6 +28,7 @@ const Auth = () => {
   const [formData, setFormData] = useState({
     email: "",
     password: "",
+    confirmPassword: "",
     otp: "",
     fullName: "",
     dateOfBirth: "",
@@ -81,20 +83,9 @@ const Auth = () => {
         setUserExists(true);
         setStep("password");
       } else {
-        // New user - send OTP
-        const { error: otpError } = await supabase.functions.invoke("send-otp", {
-          body: { email: formData.email, flow: "signup" },
-        });
-
-        if (otpError) throw otpError;
-
-        toast({
-          title: "OTP Sent",
-          description: "Please check your email for the verification code.",
-        });
+        // New user - collect password before sending OTP
         setUserExists(false);
-        setStep("otp");
-        setResendCooldown(60);
+        setStep("signup");
       }
     } catch (error: any) {
       console.error("Error checking user:", error);
@@ -103,6 +94,33 @@ const Auth = () => {
         description: error.message || "Failed to process. Please try again.",
         variant: "destructive",
       });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleSignupPasswordSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!formData.password || !formData.confirmPassword) return;
+    if (formData.password !== formData.confirmPassword) {
+      toast({ title: "Error", description: "Passwords do not match", variant: "destructive" });
+      return;
+    }
+    if (formData.password.length < 8) {
+      toast({ title: "Error", description: "Password must be at least 8 characters", variant: "destructive" });
+      return;
+    }
+    setLoading(true);
+    try {
+      const { error } = await supabase.functions.invoke("send-otp", {
+        body: { email: formData.email, flow: "signup" },
+      });
+      if (error) throw error;
+      toast({ title: "OTP Sent", description: "We sent a 6-digit code to your email" });
+      setStep("otp");
+      setResendCooldown(60);
+    } catch (err: any) {
+      toast({ title: "Error", description: err.message || "Failed to send OTP", variant: "destructive" });
     } finally {
       setLoading(false);
     }
@@ -177,25 +195,21 @@ const Auth = () => {
 
     setLoading(true);
     try {
-      // Create user account with OTP verification in a single call
-      const tempPassword = `Temp${Math.random().toString(36).slice(-8)}@${Date.now()}`;
-      
       const { data: createData, error: createError } = await supabase.functions.invoke("verify-otp", {
-        body: { 
+        body: {
           email: formData.email,
           otp: formData.otp,
-          fullName: formData.email.split('@')[0], // Use email prefix as temporary name
-          password: tempPassword,
+          fullName: formData.email.split("@")[0],
+          password: formData.password,
         },
       });
 
       if (createError) throw createError;
       if (!createData.success) throw new Error("Failed to create account");
 
-      // Sign in the user
       const { error: signInError } = await supabase.auth.signInWithPassword({
         email: formData.email,
-        password: tempPassword,
+        password: formData.password,
       });
 
       if (signInError) throw signInError;
@@ -472,10 +486,9 @@ const Auth = () => {
             </form>
           )}
 
-          {/* OTP Step */}
-          {step === "otp" && (
-            <form onSubmit={handleOTPSubmit} className="space-y-4">
-              {/* Non-editable email display */}
+          {/* Signup Password Step (new users) */}
+          {step === "signup" && (
+            <form onSubmit={handleSignupPasswordSubmit} className="space-y-4">
               <div className="space-y-2">
                 <Label>Email</Label>
                 <div className="relative">
@@ -486,37 +499,100 @@ const Auth = () => {
                 </div>
               </div>
               <div className="space-y-2">
-                <Label htmlFor="otp">6-Digit OTP</Label>
-                <Input
-                  id="otp"
-                  name="otp"
-                  type="text"
-                  placeholder="000000"
-                  value={formData.otp}
-                  onChange={handleInputChange}
-                  maxLength={6}
-                  className="text-center text-2xl tracking-widest"
-                  required
-                  disabled={loading}
-                />
-                <p className="text-sm text-muted-foreground text-center">
-                  OTP sent to the above email
-                </p>
+                <Label htmlFor="password">Password</Label>
+                <div className="relative">
+                  <Lock className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    id="password"
+                    name="password"
+                    type={showPassword ? "text" : "password"}
+                    placeholder="Enter a password"
+                    value={formData.password}
+                    onChange={handleInputChange}
+                    className="pl-10 pr-10"
+                    required
+                    disabled={loading}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-3 top-3 text-muted-foreground hover:text-foreground"
+                  >
+                    {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  </button>
+                </div>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="confirmPassword">Confirm Password</Label>
+                <div className="relative">
+                  <Lock className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    id="confirmPassword"
+                    name="confirmPassword"
+                    type="password"
+                    placeholder="Re-enter your password"
+                    value={formData.confirmPassword}
+                    onChange={handleInputChange}
+                    className="pl-10"
+                    required
+                    disabled={loading}
+                  />
+                </div>
               </div>
               <Button type="submit" className="w-full" disabled={loading}>
-                {loading ? "Verifying..." : "Verify OTP"}
+                {loading ? "Creating..." : "Create Account"}
               </Button>
               <div className="text-center">
+                <Button type="button" variant="link" onClick={() => setStep("email")} className="text-sm">
+                  Use different email
+                </Button>
+              </div>
+            </form>
+          )}
+
+          {/* OTP Step */}
+          {step === "otp" && (
+            <form onSubmit={handleOTPSubmit} className="space-y-4">
+              <div className="text-center">
+                <CardTitle className="text-xl font-bold">Verify your email</CardTitle>
+                <CardDescription>
+                  We sent a 6-digit code to <strong>{formData.email}</strong>
+                </CardDescription>
+              </div>
+              <div className="flex justify-center">
+                <InputOTP maxLength={6} value={formData.otp} onChange={(val) => setFormData({ ...formData, otp: val })}>
+                  <InputOTPGroup>
+                    <InputOTPSlot index={0} />
+                    <InputOTPSlot index={1} />
+                    <InputOTPSlot index={2} />
+                    <InputOTPSlot index={3} />
+                    <InputOTPSlot index={4} />
+                    <InputOTPSlot index={5} />
+                  </InputOTPGroup>
+                </InputOTP>
+              </div>
+              <Button type="submit" className="w-full" disabled={loading}>
+                {loading ? "Verifying..." : "Verify Code"}
+              </Button>
+              <p className="text-center text-sm text-muted-foreground">
+                {resendCooldown > 0 ? `Resend code in ${resendCooldown}s` : ""}
+              </p>
+              <div className="flex justify-between items-center">
                 <Button
                   type="button"
                   variant="link"
-                  onClick={handleResendOTP}
-                  disabled={resendCooldown > 0 || loading}
+                  onClick={() => setStep("signup")}
                   className="text-sm"
                 >
-                  {resendCooldown > 0
-                    ? `Resend OTP in ${resendCooldown}s`
-                    : "Resend OTP"}
+                  Wrong email? Go back
+                </Button>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  onClick={handleResendOTP}
+                  disabled={resendCooldown > 0 || loading}
+                >
+                  Resend OTP
                 </Button>
               </div>
             </form>

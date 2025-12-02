@@ -100,6 +100,10 @@ export default function ActivityLogs() {
   const [statusFilter, setStatusFilter] = useState("all");
   const [startDate, setStartDate] = useState<Date | undefined>();
   const [endDate, setEndDate] = useState<Date | undefined>();
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(25);
+  const [total, setTotal] = useState(0);
+  const [pageLoading, setPageLoading] = useState(false);
 
   useEffect(() => {
     if (hasPermission("activity_logs", "view")) {
@@ -107,39 +111,90 @@ export default function ActivityLogs() {
     }
   }, [hasPermission]);
 
-  const fetchLogs = async () => {
-    try {
-      const { data, error } = await supabase
-        .from("activity_logs")
-        .select("*")
-        .order("created_at", { ascending: false })
-        .limit(200);
+  useEffect(() => {
+    if (hasPermission("activity_logs", "view")) {
+      setPage(1);
+      fetchLogs(1, pageSize);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [actionFilter, moduleFilter, statusFilter, startDate, endDate]);
 
+  useEffect(() => {
+    if (hasPermission("activity_logs", "view")) {
+      setPage(1);
+      fetchLogs(1, pageSize);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pageSize]);
+
+  const fetchLogs = async (pageArg: number = page, pageSizeArg: number = pageSize) => {
+    setPageLoading(true);
+    try {
+      let query = (supabase as any)
+        .from("activity_logs")
+        .select("*", { count: "exact" });
+
+      if (actionFilter !== "all") {
+        query = query.eq("action_type", actionFilter);
+      }
+      if (moduleFilter !== "all") {
+        query = query.eq("module", moduleFilter);
+      }
+      if (statusFilter !== "all") {
+        query = query.eq("status", statusFilter);
+      }
+      if (startDate) {
+        query = query.gte("created_at", startDate.toISOString());
+      }
+      if (endDate) {
+        const endOfDay = new Date(endDate);
+        endOfDay.setHours(23, 59, 59, 999);
+        query = query.lte("created_at", endOfDay.toISOString());
+      }
+
+      if (searchEmail) {
+        const { data: profiles } = await (supabase as any)
+          .from("profiles")
+          .select("user_id")
+          .ilike("email", `%${searchEmail}%`);
+        const ids = (profiles || [])
+          .map((p: any) => p.user_id)
+          .filter(Boolean);
+        if (ids.length === 0) {
+          setLogs([]);
+          setTotal(0);
+          setPage(1);
+          return;
+        }
+        const idList = ids.join(",");
+        query = query.or(`performed_by.in.(${idList}),user_id.in.(${idList})`);
+      }
+
+      const from = (pageArg - 1) * pageSizeArg;
+      const to = from + pageSizeArg - 1;
+      const { data, count, error } = await query
+        .order("created_at", { ascending: false })
+        .range(from, to);
       if (error) throw error;
 
-      // Fetch profile details and roles for performers
       const logsWithProfiles = await Promise.all(
         (data || []).map(async (log: any) => {
           let performer_profile = null;
           let performer_roles: string[] = [];
 
           const performerId = log.performed_by || log.user_id;
-
           if (performerId) {
             const { data: profile } = await (supabase as any)
               .from("profiles")
               .select("full_name, email, profile_picture_url")
               .eq("user_id", performerId)
-              .single();
-
+              .maybeSingle();
             performer_profile = profile;
 
-            // Fetch roles
             const { data: userRoles } = await (supabase as any)
               .from("user_roles")
               .select("role, custom_role_id")
               .eq("user_id", performerId);
-
             if (userRoles) {
               for (const ur of userRoles) {
                 if (ur.role) {
@@ -149,7 +204,7 @@ export default function ActivityLogs() {
                     .from("custom_roles")
                     .select("name")
                     .eq("id", ur.custom_role_id)
-                    .single();
+                    .maybeSingle();
                   if (customRole) {
                     performer_roles.push(customRole.name);
                   }
@@ -157,20 +212,19 @@ export default function ActivityLogs() {
               }
             }
           }
-
-          return {
-            ...log,
-            performer_profile,
-            performer_roles,
-          };
+          return { ...log, performer_profile, performer_roles };
         })
       );
 
       setLogs(logsWithProfiles);
+      setTotal(count || 0);
+      setPage(pageArg);
+      setPageSize(pageSizeArg);
     } catch (error) {
       console.error("Error fetching activity logs:", error);
     } finally {
       setLoading(false);
+      setPageLoading(false);
     }
   };
 
@@ -494,11 +548,47 @@ export default function ActivityLogs() {
             </Table>
           </div>
 
-          {filteredLogs.length > 0 && (
-            <div className="mt-4 text-sm text-muted-foreground">
-              Showing {filteredLogs.length} of {logs.length} logs
+          {/* Pagination Controls */}
+          <div className="mt-4 flex items-center justify-between gap-4">
+            <div className="text-sm text-muted-foreground">
+              {total === 0
+                ? "Showing 0 to 0 of 0 entries"
+                : (() => {
+                    const start = (page - 1) * pageSize + 1;
+                    const end = Math.min(page * pageSize, total);
+                    return `Showing ${start} to ${end} of ${total} entries`;
+                  })()}
             </div>
-          )}
+            <div className="flex items-center gap-2">
+              <Select value={String(pageSize)} onValueChange={(v) => fetchLogs(1, Number(v))}>
+                <SelectTrigger className="w-[100px]">
+                  <SelectValue placeholder={String(pageSize)} />
+                </SelectTrigger>
+                <SelectContent>
+                  {[25, 50, 100].map((s) => (
+                    <SelectItem key={s} value={String(s)}>{s}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <Button
+                variant="outline"
+                onClick={() => page > 1 && fetchLogs(page - 1, pageSize)}
+                disabled={pageLoading || page <= 1}
+              >
+                Previous
+              </Button>
+              <span className="text-sm text-muted-foreground">
+                Page {page} of {Math.max(1, Math.ceil(total / pageSize))}
+              </span>
+              <Button
+                variant="outline"
+                onClick={() => page < Math.ceil(total / pageSize) && fetchLogs(page + 1, pageSize)}
+                disabled={pageLoading || page >= Math.ceil(total / pageSize)}
+              >
+                Next
+              </Button>
+            </div>
+          </div>
         </CardContent>
       </Card>
     </div>

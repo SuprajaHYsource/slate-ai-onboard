@@ -84,7 +84,7 @@ serve(async (req) => {
 
       const remaining = Math.max(0, 5 - ((otpRecord.attempts ?? 0) + 1));
       return new Response(
-        JSON.stringify({ error: `Incorrect OTP. ${remaining} attempts remaining.` }),
+        JSON.stringify({ error: "Invalid OTP", attemptsRemaining: remaining }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 400 }
       );
     }

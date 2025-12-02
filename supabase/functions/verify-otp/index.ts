@@ -122,7 +122,7 @@ serve(async (req) => {
       
       return new Response(
         JSON.stringify({ 
-          error: `Incorrect OTP. ${remaining} attempts remaining.`,
+          error: "Invalid OTP",
           attemptsRemaining: remaining
         }),
         {
