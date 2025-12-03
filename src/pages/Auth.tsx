@@ -205,7 +205,7 @@ const Auth = () => {
       });
 
       if (createError) throw createError;
-      if (!createData.success) throw new Error("Failed to create account");
+      if (!createData.success) throw new Error("Wrong OTP, please check and re-enter again");
 
       const { error: signInError } = await supabase.auth.signInWithPassword({
         email: formData.email,
@@ -224,7 +224,7 @@ const Auth = () => {
       console.error("Error verifying OTP:", error);
       toast({
         title: "Error",
-        description: error.message || "Invalid OTP. Please try again.",
+        description: /otp|code/i.test(String(error.message)) ? "Wrong OTP, please check and re-enter again" : (error.message || "Invalid OTP. Please try again."),
         variant: "destructive",
       });
     } finally {
@@ -396,13 +396,12 @@ const Auth = () => {
           <CardTitle className="text-2xl font-bold">
             {step === "email" && "Welcome to SLATE AI"}
             {step === "password" && "Welcome Back"}
-            {step === "otp" && "Verify Your Email"}
+            {step === "otp" && "Welcome to Slate AI"}
             {step === "profile" && "Complete Your Profile"}
           </CardTitle>
           <CardDescription>
             {step === "email" && "Enter your email to continue"}
             {step === "password" && "Enter your password to sign in"}
-            {step === "otp" && "Enter the 6-digit code sent to your email"}
             {step === "profile" && "Tell us a bit about yourself"}
           </CardDescription>
         </CardHeader>

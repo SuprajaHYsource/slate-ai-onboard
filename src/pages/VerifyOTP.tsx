@@ -56,6 +56,10 @@ const VerifyOTP = () => {
 
       if (error) throw error;
 
+      if (!data?.success) {
+        throw new Error("Wrong OTP, please check and re-enter again");
+      }
+
       if (data.success) {
         toast({
           title: "Success",
@@ -65,29 +69,20 @@ const VerifyOTP = () => {
       }
       } catch (error: any) {
         console.error("Error verifying OTP:", error);
-        
-        // Parse error message from response
-        let errorMessage = "Invalid OTP. Please try again.";
-        
-        if (error?.message) {
-          errorMessage = error.message;
-        }
-        
-        // Check if it's a response with error details
-        if (error?.context?.body) {
-          try {
-            const errorBody = JSON.parse(error.context.body);
-            if (errorBody.error) {
-              errorMessage = errorBody.error;
-            }
-          } catch (e) {
-            // Keep default error message
+        const rawMessage = (() => {
+          if (error?.context?.body) {
+            try {
+              const body = JSON.parse(error.context.body);
+              if (body?.error) return String(body.error);
+            } catch {}
           }
-        }
-
+          if (error?.message) return String(error.message);
+          return "";
+        })();
+        const showFriendly = /otp|code/i.test(rawMessage) || rawMessage.length === 0;
         toast({
           title: "Verification Failed",
-          description: errorMessage,
+          description: showFriendly ? "Wrong OTP, please check and re-enter again" : rawMessage,
           variant: "destructive",
         });
       } finally {
@@ -133,7 +128,7 @@ const VerifyOTP = () => {
             <ArrowLeft className="w-4 h-4 mr-2" />
             Back to Sign Up
           </Button>
-          <CardTitle className="text-2xl font-bold">Verify your email</CardTitle>
+          <CardTitle className="text-2xl font-bold">Welcome to Slate AI</CardTitle>
           <CardDescription>
             We've sent a 6-digit code to <strong>{email}</strong>
           </CardDescription>

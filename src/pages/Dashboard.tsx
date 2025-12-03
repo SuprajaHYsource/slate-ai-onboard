@@ -372,6 +372,52 @@ export default function Dashboard() {
       )}
 
       {hasRole("super_admin", "admin") && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Quick Actions</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="flex flex-wrap gap-3">
+              <Button variant="outline" onClick={() => navigate("/users/add")}>
+                <Plus className="h-4 w-4 mr-2" /> Add User
+              </Button>
+              <Button variant="outline" onClick={() => navigate("/rbac")}> 
+                <ListChecks className="h-4 w-4 mr-2" /> Manage Roles
+              </Button>
+              <Button variant="outline" onClick={() => navigate("/activity-logs")}>
+                <BarChart3 className="h-4 w-4 mr-2" /> View Activity Logs
+              </Button>
+              <Button onClick={() => navigate("/settings")}>
+                <Settings className="h-4 w-4 mr-2" /> System Settings
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Your Roles</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="flex flex-wrap gap-2">
+            {roles.length > 0 ? (
+              roles.map((role) => (
+                <span
+                  key={role}
+                  className="px-3 py-1 rounded-full text-sm font-medium bg-primary/10 text-primary"
+                >
+                  {role.replace("_", " ").toUpperCase()}
+                </span>
+              ))
+            ) : (
+              <p className="text-muted-foreground">No roles assigned yet</p>
+            )}
+          </div>
+        </CardContent>
+      </Card>
+
+      {hasRole("super_admin", "admin") && (
         <div className="grid gap-6 md:grid-cols-2">
           <Card>
             <CardHeader>
@@ -424,54 +470,6 @@ export default function Dashboard() {
           </Card>
         </div>
       )}
-
-      {hasRole("super_admin", "admin") && (
-        <Card>
-          <CardHeader>
-            <CardTitle>Quick Actions</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="flex flex-wrap gap-3">
-              <Button variant="outline" onClick={() => navigate("/users/add")}>
-                <Plus className="h-4 w-4 mr-2" /> Add User
-              </Button>
-              <Button variant="outline" onClick={() => navigate("/rbac")}> 
-                <ListChecks className="h-4 w-4 mr-2" /> Manage Roles
-              </Button>
-              <Button variant="outline" onClick={() => navigate("/activity-logs")}>
-                <BarChart3 className="h-4 w-4 mr-2" /> View Activity Logs
-              </Button>
-              <Button onClick={() => navigate("/settings")}>
-                <Settings className="h-4 w-4 mr-2" /> System Settings
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Features section removed as requested */}
-
-      <Card>
-        <CardHeader>
-          <CardTitle>Your Roles</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="flex flex-wrap gap-2">
-            {roles.length > 0 ? (
-              roles.map((role) => (
-                <span
-                  key={role}
-                  className="px-3 py-1 rounded-full text-sm font-medium bg-primary/10 text-primary"
-                >
-                  {role.replace("_", " ").toUpperCase()}
-                </span>
-              ))
-            ) : (
-              <p className="text-muted-foreground">No roles assigned yet</p>
-            )}
-          </div>
-        </CardContent>
-      </Card>
     </div>
   );
 }

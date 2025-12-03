@@ -69,8 +69,21 @@ export default function ChangeEmailDialog({
       });
 
       if (error) {
-        const errorBody = error?.context?.body ? JSON.parse(error.context.body) : null;
-        throw new Error(errorBody?.error || error.message || "Invalid OTP. Please check and try again.");
+        const rawMessage = (() => {
+          try {
+            const body = error?.context?.body ? JSON.parse(error.context.body) : null;
+            if (body?.error) return String(body.error);
+          } catch {}
+          return String(error?.message || "");
+        })();
+        const msg = /otp|code/i.test(rawMessage) || rawMessage.length === 0
+          ? "Wrong OTP, please check and re-enter again"
+          : rawMessage;
+        throw new Error(msg);
+      }
+
+      if (!data?.success) {
+        throw new Error("Wrong OTP, please check and re-enter again");
       }
 
       // Send OTP to new email
@@ -90,7 +103,7 @@ export default function ChangeEmailDialog({
     } catch (error: any) {
       toast({
         title: "Verification Failed",
-        description: error.message || "Invalid OTP. Please check your email and try again.",
+        description: error?.message || "Wrong OTP, please check and re-enter again",
         variant: "destructive",
       });
     } finally {
@@ -106,8 +119,21 @@ export default function ChangeEmailDialog({
       });
 
       if (verifyError) {
-        const errorBody = verifyError?.context?.body ? JSON.parse(verifyError.context.body) : null;
-        throw new Error(errorBody?.error || verifyError.message || "Invalid OTP. Please check and try again.");
+        const rawMessage = (() => {
+          try {
+            const body = verifyError?.context?.body ? JSON.parse(verifyError.context.body) : null;
+            if (body?.error) return String(body.error);
+          } catch {}
+          return String(verifyError?.message || "");
+        })();
+        const msg = /otp|code/i.test(rawMessage) || rawMessage.length === 0
+          ? "Wrong OTP, please check and re-enter again"
+          : rawMessage;
+        throw new Error(msg);
+      }
+
+      if (!data?.success) {
+        throw new Error("Wrong OTP, please check and re-enter again");
       }
 
       const {
@@ -156,7 +182,7 @@ export default function ChangeEmailDialog({
     } catch (error: any) {
       toast({
         title: "Verification Failed",
-        description: error.message || "Invalid OTP. Please check your email and try again.",
+        description: error?.message || "Wrong OTP, please check and re-enter again",
         variant: "destructive",
       });
     } finally {
