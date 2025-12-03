@@ -167,6 +167,12 @@ export default function ChangeEmailDialog({
         module: "profile",
         status: "success",
       });
+      await (supabase as any).from("notifications").insert({
+        user_id: user.id,
+        type: "email_changed",
+        title: "Email updated",
+        message: `Your email was changed to ${newEmail}`,
+      });
 
       toast({
         title: "Success",

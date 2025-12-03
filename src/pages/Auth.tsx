@@ -154,6 +154,12 @@ const Auth = () => {
           module: "auth",
           status: "success",
         });
+        await (supabase as any).from("notifications").insert({
+          user_id: user.id,
+          type: "login",
+          title: "Login successful",
+          message: "You signed in",
+        });
       }
 
       toast({
@@ -171,6 +177,19 @@ const Auth = () => {
         module: "auth",
         status: "failed",
       });
+      const { data: profile } = await (supabase as any)
+        .from("profiles")
+        .select("user_id")
+        .eq("email", formData.email)
+        .maybeSingle();
+      if (profile?.user_id) {
+        await (supabase as any).from("notifications").insert({
+          user_id: profile.user_id,
+          type: "failed_login",
+          title: "Login failed",
+          message: "There was a failed attempt to sign in",
+        });
+      }
 
       toast({
         title: "Error",
@@ -404,6 +423,9 @@ const Auth = () => {
             {step === "password" && "Enter your password to sign in"}
             {step === "profile" && "Tell us a bit about yourself"}
           </CardDescription>
+          {(step === "password" || step === "signup") && (
+            <p className="text-sm text-muted-foreground">Welcome back</p>
+          )}
         </CardHeader>
         <CardContent className="space-y-4">
           {/* Email Step */}

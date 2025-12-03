@@ -20,6 +20,7 @@ import { ThemeToggle } from "@/components/ThemeToggle";
 import { Logo } from "@/components/Logo";
 import { ProfileMenu } from "@/components/ProfileMenu";
 import { AppSwitcher } from "@/components/AppSwitcher";
+import { NotificationsMenu } from "@/components/NotificationsMenu";
 import {
   LayoutDashboard,
   User as UserIcon,
@@ -251,6 +252,10 @@ export default function AppLayout() {
             <SidebarTrigger />
             <div className="flex items-center gap-2">
               <ThemeToggle />
+              <NotificationsMenu 
+                open={notificationsOpen}
+                onOpenChange={handleNotificationsChange}
+              />
               <AppSwitcher 
                 open={appSwitcherOpen} 
                 onOpenChange={handleAppSwitcherChange} 

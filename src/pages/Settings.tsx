@@ -206,6 +206,12 @@ export default function Settings() {
         status: "success",
         metadata: values,
       });
+      await (supabase as any).from("notifications").insert({
+        user_id: userId,
+        type: "settings_updated",
+        title: "Settings updated",
+        message: "Your preferences were saved",
+      });
 
       toast({ title: "Saved", description: "Settings updated" });
     } catch (e: any) {

@@ -119,6 +119,21 @@ export default function Profile() {
         })
         .eq("user_id", user?.id);
       if (error) throw error;
+      await (supabase as any).from("notifications").insert({
+        user_id: user?.id || "",
+        type: "work_updated",
+        title: "Work details updated",
+        message: "Your work information was updated",
+      });
+      await (supabase as any).from("activity_logs").insert({
+        user_id: user?.id || null,
+        performed_by: user?.id || null,
+        action_type: "profile_updated",
+        description: "Work details updated",
+        module: "profile",
+        status: "success",
+        metadata: { ...workForm },
+      });
       toast({ title: "Saved", description: "Work details updated" });
       await fetchProfile();
     } catch (error: any) {
@@ -168,6 +183,21 @@ export default function Profile() {
         })
         .eq("user_id", user?.id);
       if (error) throw error;
+      await (supabase as any).from("notifications").insert({
+        user_id: user?.id || "",
+        type: "profile_updated",
+        title: "Profile updated",
+        message: "Your personal information was updated",
+      });
+      await (supabase as any).from("activity_logs").insert({
+        user_id: user?.id || null,
+        performed_by: user?.id || null,
+        action_type: "profile_updated",
+        description: "Personal information updated",
+        module: "profile",
+        status: "success",
+        metadata: { ...formData },
+      });
       toast({ title: "Saved", description: "Profile updated successfully" });
       await fetchProfile();
     } catch (error: any) {

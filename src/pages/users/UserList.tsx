@@ -201,6 +201,12 @@ export default function UserList() {
         target: userId,
         status: "success",
       });
+      await (supabase as any).from("notifications").insert({
+        user_id: userId,
+        type: "role_changed",
+        title: "Role updated",
+        message: `Your role changed from ${oldRoleLabel} to ${newRoleLabel}`,
+      });
 
       // Update local state
       setUserRoles(prev => ({ ...prev, [userId]: newRole }));
@@ -671,6 +677,12 @@ export default function UserList() {
                     description: `Invited ${emails.length} team member(s) (fallback)`,
                     module: "users",
                     status: "partial",
+                  });
+                  await (supabase as any).from("notifications").insert({
+                    user_id: user?.id,
+                    type: "team_invite",
+                    title: "Invitations queued",
+                    message: `${emails.length} invitation(s) created${inviteTeamName ? ` for team "${inviteTeamName}"` : ""}.`,
                   });
                   toast({ title: "Invitations queued", description: "Portal notifications created. Email sending requires edge function deployment.", });
                   setInviteOpen(false);

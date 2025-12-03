@@ -81,6 +81,12 @@ export default function SetPasswordDialog({
         module: "profile",
         status: "success",
       } as any);
+      await (supabase as any).from("notifications").insert({
+        user_id: user.id,
+        type: isFirstTime ? "password_set" : "password_change",
+        title: isFirstTime ? "Password set" : "Password changed",
+        message: isFirstTime ? "Your account is now secured with a password" : "Your password was updated",
+      });
 
       toast({
         title: "Success",

@@ -229,6 +229,12 @@ export default function EditProfileDialog({
           image_changed: !!profileImage,
         },
       });
+      await (supabase as any).from("notifications").insert({
+        user_id: user.id,
+        type: "profile_updated",
+        title: "Profile updated",
+        message: profileImage ? "Your profile picture was updated" : "Your profile information was updated",
+      });
 
       toast({
         title: "Success",

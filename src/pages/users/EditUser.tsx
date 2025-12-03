@@ -161,6 +161,12 @@ export default function EditUser() {
             action: actionType,
           },
         });
+        await (supabase as any).from("notifications").insert({
+          user_id: userId as string,
+          type: "role_changed",
+          title: "Role updated",
+          message: `Your role changed from ${oldRoleLabel} to ${newRoleLabel}`,
+        });
       }
 
       // Log update activity
@@ -169,6 +175,12 @@ export default function EditUser() {
         performed_by: currentUser?.id,
         action_type: "user_updated",
         description: `User ${formData.full_name} updated`,
+      });
+      await (supabase as any).from("notifications").insert({
+        user_id: userId as string,
+        type: "user_updated",
+        title: "Account updated",
+        message: `Your account details were updated by an administrator`,
       });
 
       toast({

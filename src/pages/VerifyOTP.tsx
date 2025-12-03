@@ -61,6 +61,20 @@ const VerifyOTP = () => {
       }
 
       if (data.success) {
+        await (supabase as any).from("activity_logs").insert({
+          action_type: "otp_verification",
+          description: `Signup OTP verified for ${email}`,
+          module: "auth",
+          status: "success",
+          metadata: { email },
+        });
+        await (supabase as any).from("activity_logs").insert({
+          action_type: "signup",
+          description: `User signed up: ${email}`,
+          module: "auth",
+          status: "success",
+          metadata: { email },
+        });
         toast({
           title: "Success",
           description: "Account created successfully! Please sign in.",
@@ -104,9 +118,23 @@ const VerifyOTP = () => {
         title: "Success",
         description: "New OTP sent to your email",
       });
+      await (supabase as any).from("activity_logs").insert({
+        action_type: "otp_resend",
+        description: `Signup OTP resent for ${email}`,
+        module: "auth",
+        status: "success",
+        metadata: { email },
+      });
       setResendCooldown(30);
     } catch (error: any) {
       console.error("Error resending OTP:", error);
+      await (supabase as any).from("activity_logs").insert({
+        action_type: "otp_resend",
+        description: `Signup OTP resend failed for ${email}`,
+        module: "auth",
+        status: "failed",
+        metadata: { email, error: error.message },
+      });
       toast({
         title: "Error",
         description: "Failed to resend OTP",

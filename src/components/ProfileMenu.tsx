@@ -102,13 +102,18 @@ export const ProfileMenu = ({ open, onOpenChange }: ProfileMenuProps) => {
         .eq("user_id", user.id);
 
       if (profileData) {
+        let fetchedRoles: string[] = rolesData?.map((r: any) => r.role as string).filter(Boolean) || [];
+        const hasUpgraded = fetchedRoles.some((r) => ["super_admin", "admin", "hr", "manager"].includes(r));
+        if (hasUpgraded) {
+          fetchedRoles = fetchedRoles.filter((r) => r !== "employee");
+        }
         setProfile({
           full_name: profileData.full_name,
           email: profileData.email,
           profile_picture_url: profileData.profile_picture_url 
             ? `${profileData.profile_picture_url}?t=${Date.now()}` 
             : null,
-          roles: rolesData?.map((r: any) => r.role as string).filter(Boolean) || [],
+          roles: fetchedRoles,
         });
       }
     } catch (error) {

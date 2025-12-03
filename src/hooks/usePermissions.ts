@@ -25,14 +25,18 @@ export function usePermissions() {
         .select("role")
         .eq("user_id", user.id);
 
-      const rolesList = userRoles?.map((r: any) => r.role).filter(Boolean) || [];
+      let rolesList = userRoles?.map((r: any) => r.role).filter(Boolean) || [];
+      const hasUpgraded = rolesList.some((r: string) => ["super_admin", "admin", "hr", "manager"].includes(r));
+      if (hasUpgraded) {
+        rolesList = rolesList.filter((r: string) => r !== "employee");
+      }
       setRoles(rolesList);
 
       // Fetch permissions for these roles
       const { data: rolePermissions } = await supabase
         .from("role_permissions")
         .select("permission_id, permissions(module, action)")
-        .in("role", rolesList);
+        .in("role", rolesList.length > 0 ? rolesList : ["employee"]);
 
       const perms =
         rolePermissions?.map((rp: any) => ({

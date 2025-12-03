@@ -34,12 +34,26 @@ const ForgotPassword = () => {
 
       setStep("otp");
       setResendCooldown(120);
+      await (supabase as any).from("activity_logs").insert({
+        action_type: "forgot_password",
+        description: `OTP sent for password reset to ${email}`,
+        module: "auth",
+        status: "success",
+        metadata: { email },
+      });
       toast({
         title: "Success",
         description: "OTP sent to your email!",
       });
     } catch (error: any) {
       console.error("Error sending OTP:", error);
+      await (supabase as any).from("activity_logs").insert({
+        action_type: "forgot_password",
+        description: `Failed to send OTP for ${email}`,
+        module: "auth",
+        status: "failed",
+        metadata: { email, error: error.message },
+      });
       toast({
         title: "Error",
         description: error.message || "Failed to send OTP",
@@ -77,12 +91,26 @@ const ForgotPassword = () => {
       
 
       setStep("password");
+      await (supabase as any).from("activity_logs").insert({
+        action_type: "otp_verification",
+        description: `OTP verified for ${email}`,
+        module: "auth",
+        status: "success",
+        metadata: { email },
+      });
       toast({
         title: "Success",
         description: "OTP verified! Now set your new password.",
       });
     } catch (error: any) {
       console.error("Error verifying OTP:", error);
+      await (supabase as any).from("activity_logs").insert({
+        action_type: "otp_verification",
+        description: `OTP verification failed for ${email}`,
+        module: "auth",
+        status: "failed",
+        metadata: { email, error: error.message },
+      });
       toast({
         title: "Error",
         description: error.message || "Failed to verify OTP",
@@ -123,6 +151,13 @@ const ForgotPassword = () => {
 
       if (error) throw error;
 
+      await (supabase as any).from("activity_logs").insert({
+        action_type: "password_reset",
+        description: `Password reset via OTP for ${email}`,
+        module: "auth",
+        status: "success",
+        metadata: { email },
+      });
       toast({
         title: "Success",
         description: "Password updated successfully!",
@@ -131,6 +166,13 @@ const ForgotPassword = () => {
       navigate("/auth");
     } catch (error: any) {
       console.error("Error updating password:", error);
+      await (supabase as any).from("activity_logs").insert({
+        action_type: "password_reset",
+        description: `Password reset failed for ${email}`,
+        module: "auth",
+        status: "failed",
+        metadata: { email, error: error.message },
+      });
       toast({
         title: "Error",
         description: error.message || "Failed to update password",
@@ -153,11 +195,25 @@ const ForgotPassword = () => {
       if (error) throw error;
 
       setResendCooldown(120);
+      await (supabase as any).from("activity_logs").insert({
+        action_type: "otp_resend",
+        description: `OTP resent for ${email}`,
+        module: "auth",
+        status: "success",
+        metadata: { email },
+      });
       toast({
         title: "Success",
         description: "OTP resent successfully!",
       });
     } catch (error: any) {
+      await (supabase as any).from("activity_logs").insert({
+        action_type: "otp_resend",
+        description: `OTP resend failed for ${email}`,
+        module: "auth",
+        status: "failed",
+        metadata: { email, error: error.message },
+      });
       toast({
         title: "Error",
         description: error.message || "Failed to resend OTP",

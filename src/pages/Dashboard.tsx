@@ -34,7 +34,6 @@ export default function Dashboard() {
   const [showWelcomeDialog, setShowWelcomeDialog] = useState(false);
   const [signupMethod, setSignupMethod] = useState<string>("");
   const [passwordSet, setPasswordSet] = useState(true);
-  const [showWelcomeBack, setShowWelcomeBack] = useState(false);
   const [welcomeName, setWelcomeName] = useState<string>("");
 
   useEffect(() => {
@@ -105,7 +104,6 @@ export default function Dashboard() {
         .maybeSingle();
       displayName = profile?.full_name || profile?.email || user.email || "";
       setWelcomeName(displayName);
-      setShowWelcomeBack(true);
     } catch (error) {
       console.error("Error determining welcome back:", error);
     }
@@ -296,17 +294,7 @@ export default function Dashboard() {
         </DialogContent>
       </Dialog>
 
-      {showWelcomeBack && (
-        <Card className="border-green-500/30 bg-green-500/10">
-          <CardContent className="py-6 flex items-center justify-between">
-            <div>
-              <h2 className="text-2xl font-bold">Welcome back{welcomeName ? `, ${welcomeName}` : ","}</h2>
-              <p className="text-sm text-muted-foreground mt-1">You are signed in</p>
-            </div>
-            <Button variant="outline" onClick={() => setShowWelcomeBack(false)}>Dismiss</Button>
-          </CardContent>
-        </Card>
-      )}
+      
 
       <div>
         <h1 className="text-3xl font-bold text-foreground">Welcome{welcomeName ? `, ${welcomeName}` : ""}</h1>
