@@ -279,10 +279,10 @@ export default function UserList() {
 
       if (error) throw error;
 
-      await supabase.from("activity_logs").insert({
+      await (supabase.from("activity_logs") as any).insert({
         user_id: activateUserId,
         performed_by: user?.id,
-        action_type: "user_activated",
+        action_type: "user_status_changed",
         description: "User account activated",
         module: "users",
         target: activateUserId,
@@ -313,10 +313,10 @@ export default function UserList() {
       });
       if (error) throw error;
 
-      await supabase.from("activity_logs").insert({
+      await (supabase.from("activity_logs") as any).insert({
         user_id: userId,
         performed_by: (await supabase.auth.getUser()).data.user?.id,
-        action_type: "password_reset_initiated",
+        action_type: "forgot_password",
         description: `Sent password reset OTP to ${email}`,
         module: "users",
         target: userId,

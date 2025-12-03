@@ -55,8 +55,8 @@ const ForgotPassword = () => {
         metadata: { email, error: error.message },
       });
       toast({
-        title: "Error",
-        description: error.message || "Failed to send OTP",
+        title: "Unable to send OTP",
+        description: "Please check your email address and try again",
         variant: "destructive",
       });
     } finally {
@@ -112,8 +112,8 @@ const ForgotPassword = () => {
         metadata: { email, error: error.message },
       });
       toast({
-        title: "Error",
-        description: error.message || "Failed to verify OTP",
+        title: "Verification Failed",
+        description: "Wrong OTP, please check and re-enter again",
         variant: "destructive",
       });
     } finally {
@@ -126,8 +126,8 @@ const ForgotPassword = () => {
 
     if (password !== confirmPassword) {
       toast({
-        title: "Error",
-        description: "Passwords do not match",
+        title: "Passwords don't match",
+        description: "Please make sure both passwords are the same",
         variant: "destructive",
       });
       return;
@@ -135,8 +135,8 @@ const ForgotPassword = () => {
 
     if (password.length < 8) {
       toast({
-        title: "Error",
-        description: "Password must be at least 8 characters long",
+        title: "Password too short",
+        description: "Please use at least 8 characters for your password",
         variant: "destructive",
       });
       return;
@@ -174,8 +174,8 @@ const ForgotPassword = () => {
         metadata: { email, error: error.message },
       });
       toast({
-        title: "Error",
-        description: error.message || "Failed to update password",
+        title: "Unable to update password",
+        description: "Something went wrong. Please try again",
         variant: "destructive",
       });
     } finally {
@@ -215,8 +215,8 @@ const ForgotPassword = () => {
         metadata: { email, error: error.message },
       });
       toast({
-        title: "Error",
-        description: error.message || "Failed to resend OTP",
+        title: "Unable to resend OTP",
+        description: "Please wait a moment and try again",
         variant: "destructive",
       });
     } finally {
