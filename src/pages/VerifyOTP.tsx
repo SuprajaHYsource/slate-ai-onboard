@@ -69,20 +69,9 @@ const VerifyOTP = () => {
       }
       } catch (error: any) {
         console.error("Error verifying OTP:", error);
-        const rawMessage = (() => {
-          if (error?.context?.body) {
-            try {
-              const body = JSON.parse(error.context.body);
-              if (body?.error) return String(body.error);
-            } catch {}
-          }
-          if (error?.message) return String(error.message);
-          return "";
-        })();
-        const showFriendly = /otp|code/i.test(rawMessage) || rawMessage.length === 0;
         toast({
           title: "Verification Failed",
-          description: showFriendly ? "Wrong OTP, please check and re-enter again" : rawMessage,
+          description: "Wrong OTP, please check and re-enter again",
           variant: "destructive",
         });
       } finally {
@@ -108,8 +97,8 @@ const VerifyOTP = () => {
     } catch (error: any) {
       console.error("Error resending OTP:", error);
       toast({
-        title: "Error",
-        description: "Failed to resend OTP",
+        title: "Unable to resend OTP",
+        description: "Please wait a moment and try again",
         variant: "destructive",
       });
     }
