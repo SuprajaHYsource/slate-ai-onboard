@@ -90,8 +90,8 @@ const Auth = () => {
     } catch (error: any) {
       console.error("Error checking user:", error);
       toast({
-        title: "Error",
-        description: error.message || "Failed to process. Please try again.",
+        title: "Something went wrong",
+        description: "Unable to verify your email. Please try again",
         variant: "destructive",
       });
     } finally {
@@ -103,11 +103,11 @@ const Auth = () => {
     e.preventDefault();
     if (!formData.password || !formData.confirmPassword) return;
     if (formData.password !== formData.confirmPassword) {
-      toast({ title: "Error", description: "Passwords do not match", variant: "destructive" });
+      toast({ title: "Passwords don't match", description: "Please make sure both passwords are the same", variant: "destructive" });
       return;
     }
     if (formData.password.length < 8) {
-      toast({ title: "Error", description: "Password must be at least 8 characters", variant: "destructive" });
+      toast({ title: "Password too short", description: "Please use at least 8 characters for your password", variant: "destructive" });
       return;
     }
     setLoading(true);
@@ -120,7 +120,7 @@ const Auth = () => {
       setStep("otp");
       setResendCooldown(60);
     } catch (err: any) {
-      toast({ title: "Error", description: err.message || "Failed to send OTP", variant: "destructive" });
+      toast({ title: "Unable to send OTP", description: "Please check your email and try again", variant: "destructive" });
     } finally {
       setLoading(false);
     }
@@ -173,8 +173,8 @@ const Auth = () => {
       });
 
       toast({
-        title: "Error",
-        description: error.message || "Incorrect password. Please try again.",
+        title: "Incorrect password",
+        description: "Please check your password and try again",
         variant: "destructive",
       });
     } finally {
@@ -186,8 +186,8 @@ const Auth = () => {
     e.preventDefault();
     if (formData.otp.length !== 6) {
       toast({
-        title: "Error",
-        description: "Please enter a valid 6-digit OTP",
+        title: "Invalid OTP",
+        description: "Please enter a valid 6-digit code",
         variant: "destructive",
       });
       return;
@@ -223,8 +223,8 @@ const Auth = () => {
     } catch (error: any) {
       console.error("Error verifying OTP:", error);
       toast({
-        title: "Error",
-        description: /otp|code/i.test(String(error.message)) ? "Wrong OTP, please check and re-enter again" : (error.message || "Invalid OTP. Please try again."),
+        title: "Verification Failed",
+        description: "Wrong OTP, please check and re-enter again",
         variant: "destructive",
       });
     } finally {
@@ -237,8 +237,8 @@ const Auth = () => {
     
     if (!formData.fullName.trim()) {
       toast({
-        title: "Error",
-        description: "Full name is required",
+        title: "Name required",
+        description: "Please enter your full name",
         variant: "destructive",
       });
       return;
@@ -323,8 +323,8 @@ const Auth = () => {
     } catch (error: any) {
       console.error("Error creating account:", error);
       toast({
-        title: "Error",
-        description: error.message || "Failed to create account. Please try again.",
+        title: "Account creation failed",
+        description: "Something went wrong. Please try again",
         variant: "destructive",
       });
     } finally {
@@ -351,8 +351,8 @@ const Auth = () => {
     } catch (error: any) {
       console.error("Error resending OTP:", error);
       toast({
-        title: "Error",
-        description: error.message || "Failed to resend OTP. Please try again.",
+        title: "Unable to resend OTP",
+        description: "Please wait a moment and try again",
         variant: "destructive",
       });
     } finally {

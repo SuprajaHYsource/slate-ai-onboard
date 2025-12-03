@@ -52,8 +52,8 @@ export default function ChangeEmailDialog({
       setStep("verify-old");
     } catch (error: any) {
       toast({
-        title: "Error",
-        description: error.message,
+        title: "Unable to send verification code",
+        description: "Please check your email and try again",
         variant: "destructive",
       });
     } finally {
@@ -103,7 +103,7 @@ export default function ChangeEmailDialog({
     } catch (error: any) {
       toast({
         title: "Verification Failed",
-        description: error?.message || "Wrong OTP, please check and re-enter again",
+        description: "Wrong OTP, please check and re-enter again",
         variant: "destructive",
       });
     } finally {
@@ -182,7 +182,7 @@ export default function ChangeEmailDialog({
     } catch (error: any) {
       toast({
         title: "Verification Failed",
-        description: error?.message || "Wrong OTP, please check and re-enter again",
+        description: "Wrong OTP, please check and re-enter again",
         variant: "destructive",
       });
     } finally {
@@ -346,8 +346,8 @@ export default function ChangeEmailDialog({
                   });
                 } catch (error: any) {
                   toast({
-                    title: "Error",
-                    description: error.message,
+                    title: "Unable to resend OTP",
+                    description: "Please wait a moment and try again",
                     variant: "destructive",
                   });
                 } finally {
