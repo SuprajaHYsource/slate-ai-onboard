@@ -56,7 +56,7 @@ interface UserRoleInfo {
 export default function UserList() {
   const navigate = useNavigate();
   const { toast } = useToast();
-  const { hasPermission } = usePermissions();
+  const { hasPermission, loading: permLoading } = usePermissions();
   const { allRoles, loading: rolesLoading } = useAllRoles();
   const [users, setUsers] = useState<UserProfile[]>([]);
   const [filteredUsers, setFilteredUsers] = useState<UserProfile[]>([]);
@@ -72,12 +72,20 @@ export default function UserList() {
   const [inviteEmails, setInviteEmails] = useState("");
   const [inviteTeamName, setInviteTeamName] = useState("");
   const [inviting, setInviting] = useState(false);
+  const [initialLoadDone, setInitialLoadDone] = useState(false);
 
+  // Stable permission check
+  const canView = !permLoading && hasPermission("users", "view");
+
+  // Initial load only - once permissions and roles are ready
   useEffect(() => {
-    if (hasPermission("users", "view") && !rolesLoading) {
+    if (!permLoading && !rolesLoading && canView && !initialLoadDone) {
+      setInitialLoadDone(true);
       fetchUsers();
+    } else if (!permLoading && !rolesLoading && !canView) {
+      setLoading(false);
     }
-  }, [hasPermission, rolesLoading]);
+  }, [permLoading, rolesLoading, canView, initialLoadDone]);
 
   useEffect(() => {
     let filtered = users;
@@ -342,11 +350,11 @@ export default function UserList() {
     return allRoles.find(r => r.value === roleValue)?.label || roleValue;
   };
 
-  if (loading || rolesLoading) {
+  if (loading || rolesLoading || permLoading) {
     return <div className="animate-pulse">Loading users...</div>;
   }
 
-  if (!hasPermission("users", "view")) {
+  if (!canView) {
     return (
       <div className="text-center py-12">
         <p className="text-muted-foreground">
