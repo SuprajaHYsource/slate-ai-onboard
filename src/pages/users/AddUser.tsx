@@ -73,13 +73,17 @@ export default function AddUser() {
         }
       );
 
-      if (authError) {
-        throw authError;
+      // Check if the response contains an error (edge function returns error in data for non-2xx)
+      if (authData?.error) {
+        const errorCode = authData.code || "";
+        if (errorCode === "email_exists" || authData.error.toLowerCase().includes("already exists")) {
+          throw new Error("EMAIL_EXISTS");
+        }
+        throw new Error(authData.error);
       }
 
-      // Check if the response contains an error
-      if (authData?.error) {
-        throw new Error(authData.error);
+      if (authError) {
+        throw authError;
       }
 
       const newUserId = authData.user.id;
@@ -139,16 +143,18 @@ export default function AddUser() {
       
       // Parse user-friendly error messages
       let errorMessage = "Failed to create user. Please try again.";
-      const errorString = error.message?.toLowerCase() || "";
+      const errorString = error.message || "";
       
-      if (errorString.includes("email") && (errorString.includes("exists") || errorString.includes("already"))) {
+      if (errorString === "EMAIL_EXISTS" || errorString.toLowerCase().includes("email") && errorString.toLowerCase().includes("exists")) {
         errorMessage = "A user with this email address already exists. Please use a different email.";
-      } else if (errorString.includes("password") && errorString.includes("8")) {
+      } else if (errorString.toLowerCase().includes("password") && errorString.includes("8")) {
         errorMessage = "Password must be at least 8 characters long.";
-      } else if (errorString.includes("invalid") && errorString.includes("email")) {
+      } else if (errorString.toLowerCase().includes("invalid") && errorString.toLowerCase().includes("email")) {
         errorMessage = "Please enter a valid email address.";
-      } else if (errorString.includes("name") && errorString.includes("required")) {
+      } else if (errorString.toLowerCase().includes("name") && errorString.toLowerCase().includes("required")) {
         errorMessage = "Please enter the user's full name.";
+      } else if (errorString.includes("non-2xx")) {
+        errorMessage = "Unable to create user. The email may already be registered.";
       }
       
       toast({
