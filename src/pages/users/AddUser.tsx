@@ -60,69 +60,34 @@ export default function AddUser() {
         data: { user: currentUser },
       } = await supabase.auth.getUser();
 
-      // Create user via edge function with explicit error handling
-      let authData: any = null;
-      let authError: any = null;
+      // Create user via edge function using direct fetch to avoid client-side error interception
+      const { data: { session } } = await supabase.auth.getSession();
       
-      try {
-        const result = await supabase.functions.invoke("create-user", {
-          body: {
+      const response = await fetch(
+        "https://remugtgbjkrxuegbiguq.supabase.co/functions/v1/create-user",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${session?.access_token}`,
+            "apikey": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJlbXVndGdiamtyeHVlZ2JpZ3VxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjMwOTkwNDQsImV4cCI6MjA3ODY3NTA0NH0.BPpJ3zRzluIWyBQR1YkFTG2V0IGJihIhRS9TOm0My7Y",
+          },
+          body: JSON.stringify({
             email: formData.email,
             password: formData.password,
             full_name: formData.full_name,
-          },
-        });
-        authData = result.data;
-        authError = result.error;
-      } catch (invokeError: any) {
-        // Handle thrown exceptions from functions.invoke
-        console.log("Functions invoke threw:", invokeError);
-        const errorStr = invokeError?.message || String(invokeError) || "";
-        
-        if (errorStr.toLowerCase().includes("email") && 
-            (errorStr.toLowerCase().includes("exists") || errorStr.toLowerCase().includes("already"))) {
-          setLoading(false);
-          toast({
-            title: "Unable to create user",
-            description: "A user with this email address already exists. Please use a different email.",
-            variant: "destructive",
-          });
-          return;
+          }),
         }
-        
-        setLoading(false);
-        toast({
-          title: "Unable to create user",
-          description: "Failed to create user. Please try again.",
-          variant: "destructive",
-        });
-        return;
-      }
+      );
 
-      // Handle edge function errors from returned error object
-      if (authError || authData?.error) {
-        const errorCode = authData?.code || "";
-        let errorMsg = authData?.error || "";
-        let isEmailExists = errorCode === "email_exists";
-        
-        if (!errorMsg && authError) {
-          errorMsg = authError.message || "";
-          const jsonMatch = errorMsg.match(/\{[^}]+\}/);
-          if (jsonMatch) {
-            try {
-              const parsed = JSON.parse(jsonMatch[0]);
-              errorMsg = parsed.error || errorMsg;
-              isEmailExists = isEmailExists || parsed.code === "email_exists";
-            } catch {
-              // JSON parse failed
-            }
-          }
-        }
-        
-        isEmailExists = isEmailExists || 
-            errorMsg.toLowerCase().includes("already exists") || 
-            errorMsg.toLowerCase().includes("already been registered") ||
-            errorMsg.toLowerCase().includes("email_exists");
+      const responseData = await response.json();
+
+      // Handle non-2xx responses
+      if (!response.ok) {
+        const isEmailExists = 
+          responseData?.code === "email_exists" ||
+          responseData?.error?.toLowerCase().includes("already exists") ||
+          responseData?.error?.toLowerCase().includes("already been registered");
         
         if (isEmailExists) {
           setLoading(false);
@@ -137,13 +102,13 @@ export default function AddUser() {
         setLoading(false);
         toast({
           title: "Unable to create user",
-          description: errorMsg || "Failed to create user. Please try again.",
+          description: responseData?.error || "Failed to create user. Please try again.",
           variant: "destructive",
         });
         return;
       }
 
-      const newUserId = authData.user.id;
+      const newUserId = responseData.user.id;
 
       // Create profile
       const { error: profileError } = await supabase.from("profiles").insert({
