@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -19,7 +19,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Plus, Search, Edit, Trash2, Mail, MoreVertical, Eye, KeyRound } from "lucide-react";
+import { Plus, Search, Edit, Trash2, Mail, MoreVertical, Eye } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
 import { usePermissions } from "@/hooks/usePermissions";
@@ -72,6 +72,11 @@ export default function UserList() {
   const [inviteEmails, setInviteEmails] = useState("");
   const [inviteTeamName, setInviteTeamName] = useState("");
   const [inviting, setInviting] = useState(false);
+  const initialRender = useRef(true);
+
+  useEffect(() => {
+    initialRender.current = false;
+  }, []);
 
   useEffect(() => {
     if (hasPermission("users", "view") && !rolesLoading) {
@@ -208,6 +213,27 @@ export default function UserList() {
         message: `Your role changed from ${oldRoleLabel} to ${newRoleLabel}`,
       });
 
+      const mapDeptPos = (role: string) => {
+        switch (role) {
+          case "super_admin":
+            return { department: "Administration", position: "Super Admin" };
+          case "admin":
+            return { department: "Administration", position: "Admin" };
+          case "hr":
+            return { department: "Human Resources", position: "HR" };
+          case "manager":
+            return { department: "Management", position: "Manager" };
+          default:
+            return { department: "Operations", position: "User" };
+        }
+      };
+
+      const mapped = mapDeptPos(newRole);
+      await (supabase as any)
+        .from("profiles")
+        .update({ department: mapped.department, position: mapped.position })
+        .eq("user_id", userId);
+
       // Update local state
       setUserRoles(prev => ({ ...prev, [userId]: newRole }));
 
@@ -306,28 +332,7 @@ export default function UserList() {
     }
   };
 
-  const handleSendResetOTP = async (email: string, userId: string) => {
-    try {
-      const { error } = await supabase.functions.invoke("send-otp", {
-        body: { email, flow: "forgot_password" },
-      });
-      if (error) throw error;
 
-      await (supabase.from("activity_logs") as any).insert({
-        user_id: userId,
-        performed_by: (await supabase.auth.getUser()).data.user?.id,
-        action_type: "forgot_password",
-        description: `Sent password reset OTP to ${email}`,
-        module: "users",
-        target: userId,
-        status: "success",
-      });
-
-      toast({ title: "Reset OTP sent", description: `OTP sent to ${email}` });
-    } catch (error: any) {
-      toast({ title: "Error", description: error.message || "Failed to send OTP", variant: "destructive" });
-    }
-  };
 
   const getInitials = (name: string) => {
     return name
@@ -357,7 +362,7 @@ export default function UserList() {
   }
 
   return (
-    <div className="space-y-6 animate-fade-in">
+    <div className={`space-y-6 ${initialRender.current ? "animate-fade-in" : ""}`}>
       <div className="flex justify-between items-center">
         <div>
           <h1 className="text-3xl font-bold text-foreground">User Management</h1>
@@ -524,11 +529,7 @@ export default function UserList() {
                             <Edit className="mr-2 h-4 w-4" /> Edit User
                           </DropdownMenuItem>
                         )}
-                        {hasPermission("users", "edit") && (
-                          <DropdownMenuItem onClick={() => handleSendResetOTP(user.email, user.user_id)}>
-                            <KeyRound className="mr-2 h-4 w-4" /> Send Reset OTP
-                          </DropdownMenuItem>
-                        )}
+
                         {hasPermission("users", "delete") && (
                           <DropdownMenuItem onClick={() => (user.is_active ? setDeleteUserId(user.user_id) : setActivateUserId(user.user_id))}>
                             {user.is_active ? (

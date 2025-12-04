@@ -389,18 +389,21 @@ export default function Dashboard() {
         </CardHeader>
         <CardContent>
           <div className="flex flex-wrap gap-2">
-            {roles.length > 0 ? (
-              roles.map((role) => (
-                <span
-                  key={role}
-                  className="px-3 py-1 rounded-full text-sm font-medium bg-primary/10 text-primary"
-                >
-                  {role.replace("_", " ").toUpperCase()}
-                </span>
-              ))
-            ) : (
-              <p className="text-muted-foreground">No roles assigned yet</p>
-            )}
+              {roles.length > 0 ? (
+                roles.map((role) => {
+                  const label = role === "employee" ? "User" : role.replace("_", " ").toUpperCase();
+                  return (
+                    <span
+                      key={role}
+                      className="px-3 py-1 rounded-full text-sm font-medium bg-primary/10 text-primary"
+                    >
+                      {label}
+                    </span>
+                  );
+                })
+              ) : (
+                <p className="text-muted-foreground">No roles assigned yet</p>
+              )}
           </div>
         </CardContent>
       </Card>

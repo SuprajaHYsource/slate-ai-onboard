@@ -46,6 +46,10 @@ export default function Profile() {
   const [dobError, setDobError] = useState<string | null>(null);
   const [workForm, setWorkForm] = useState({ employee_id: "", department: "", position: "", join_date: "", location: "" });
   const [savingWork, setSavingWork] = useState(false);
+  const [userRole, setUserRole] = useState<string | null>(null);
+
+  const sanitizeName = (value: string) => value.replace(/[^A-Za-z\s]/g, "");
+  const sanitizeAlphanumeric = (value: string) => value.replace(/[^A-Za-z0-9]/g, "");
 
   useEffect(() => {
     fetchProfile();
@@ -83,10 +87,34 @@ export default function Profile() {
         address: profileData.address || "",
         date_of_birth: profileData.date_of_birth || "",
       });
+      const { data: roleData } = await (supabase as any)
+        .from("user_roles")
+        .select("role, custom_role_id")
+        .eq("user_id", user.id)
+        .maybeSingle();
+      const roleValue = roleData?.role || (roleData?.custom_role_id ? `custom_${roleData.custom_role_id}` : null);
+      setUserRole(roleValue || null);
+
+      const mapDeptPos = (role?: string | null) => {
+        switch (role) {
+          case "super_admin":
+            return { department: "Administration", position: "Super Admin" };
+          case "admin":
+            return { department: "Administration", position: "Admin" };
+          case "hr":
+            return { department: "Human Resources", position: "HR" };
+          case "manager":
+            return { department: "Management", position: "Manager" };
+          default:
+            return { department: "Operations", position: "User" };
+        }
+      };
+
+      const mapped = mapDeptPos(roleValue);
       setWorkForm({
         employee_id: (profileData as any).employee_id || "",
-        department: (profileData as any).department || "",
-        position: (profileData as any).position || "",
+        department: mapped.department,
+        position: mapped.position,
         join_date: (profileData as any).join_date || "",
         location: (profileData as any).location || "",
       });
@@ -365,7 +393,7 @@ export default function Profile() {
                   <div className="grid gap-4">
                     <div>
                       <Label>Full Name</Label>
-                      <Input value={formData.full_name} onChange={(e) => setFormData({ ...formData, full_name: e.target.value })} />
+                      <Input value={formData.full_name} onChange={(e) => setFormData({ ...formData, full_name: sanitizeName(e.target.value) })} />
                     </div>
                     <div>
                       <Label>Email</Label>
@@ -392,15 +420,15 @@ export default function Profile() {
                   <div className="grid gap-4">
                     <div>
                       <Label>Employee ID</Label>
-                      <Input value={workForm.employee_id} onChange={(e) => setWorkForm({ ...workForm, employee_id: e.target.value })} />
+                      <Input value={workForm.employee_id} onChange={(e) => setWorkForm({ ...workForm, employee_id: sanitizeAlphanumeric(e.target.value) })} />
                     </div>
                     <div>
                       <Label>Department</Label>
-                      <Input value={workForm.department} onChange={(e) => setWorkForm({ ...workForm, department: e.target.value })} />
+                      <Input value={workForm.department} disabled />
                     </div>
                     <div>
                       <Label>Position</Label>
-                      <Input value={workForm.position} onChange={(e) => setWorkForm({ ...workForm, position: e.target.value })} />
+                      <Input value={workForm.position} disabled />
                     </div>
                     <div>
                       <Label>Join Date</Label>
@@ -408,7 +436,7 @@ export default function Profile() {
                     </div>
                     <div>
                       <Label>Location</Label>
-                      <Input value={workForm.location} onChange={(e) => setWorkForm({ ...workForm, location: e.target.value })} />
+                      <Input value={workForm.location} onChange={(e) => setWorkForm({ ...workForm, location: sanitizeAlphanumeric(e.target.value) })} />
                     </div>
                   </div>
                   <Button onClick={handleSaveWork} disabled={savingWork} className="mt-2">{savingWork ? "Saving..." : "Save Work Details"}</Button>
