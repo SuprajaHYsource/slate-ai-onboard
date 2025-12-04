@@ -82,8 +82,8 @@ export default function AddUser() {
 
       const responseData = await response.json();
 
-      // Handle non-2xx responses
-      if (!response.ok) {
+      // Check for error in response body (edge function now returns 200 with error in body)
+      if (responseData?.error || responseData?.success === false) {
         const isEmailExists = 
           responseData?.code === "email_exists" ||
           responseData?.error?.toLowerCase().includes("already exists") ||
