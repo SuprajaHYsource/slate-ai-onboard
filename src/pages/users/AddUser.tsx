@@ -120,7 +120,16 @@ export default function AddUser() {
         password_set: true,
       });
 
-      if (profileError) throw profileError;
+      if (profileError) {
+        console.error("Profile creation error:", profileError);
+        toast({
+          title: "User created with issues",
+          description: "User account was created but profile setup failed. Please update the user profile.",
+          variant: "warning",
+        });
+        navigate("/users");
+        return;
+      }
 
       // Assign role - handle both system and custom roles
       const isCustomRole = formData.role.startsWith("custom_");
@@ -132,27 +141,50 @@ export default function AddUser() {
           custom_role_id: customRoleId,
           assigned_by: currentUser?.id,
         }]);
-        if (roleError) throw roleError;
+        if (roleError) {
+          console.error("Role assignment error:", roleError);
+          toast({
+            title: "User created with issues",
+            description: "User account was created but role assignment failed. Please assign a role manually.",
+            variant: "warning",
+          });
+          navigate("/users");
+          return;
+        }
       } else {
         const { error: roleError } = await supabase.from("user_roles").insert([{
           user_id: newUserId,
           role: formData.role as any,
           assigned_by: currentUser?.id,
         }]);
-        if (roleError) throw roleError;
+        if (roleError) {
+          console.error("Role assignment error:", roleError);
+          toast({
+            title: "User created with issues",
+            description: "User account was created but role assignment failed. Please assign a role manually.",
+            variant: "warning",
+          });
+          navigate("/users");
+          return;
+        }
       }
 
       // Get role label for logging
       const roleLabel = allRoles.find(r => r.value === formData.role)?.label || formData.role;
 
-      // Log activity
-      await supabase.from("activity_logs").insert({
-        user_id: newUserId,
-        performed_by: currentUser?.id,
-        action_type: "user_created",
-        description: `User ${formData.full_name} created by admin`,
-        metadata: { role: formData.role, role_label: roleLabel },
-      });
+      // Log activity (don't fail the whole operation if this fails)
+      try {
+        await supabase.from("activity_logs").insert({
+          user_id: newUserId,
+          performed_by: currentUser?.id,
+          action_type: "user_created",
+          description: `User ${formData.full_name} created by admin`,
+          metadata: { role: formData.role, role_label: roleLabel },
+        });
+      } catch (logError) {
+        console.error("Activity log error:", logError);
+        // Don't show error for activity log failure
+      }
 
       toast({
         title: "Success",
@@ -163,25 +195,9 @@ export default function AddUser() {
     } catch (error: any) {
       console.error("Error creating user:", error);
       
-      // Parse user-friendly error messages
-      let errorMessage = "Failed to create user. Please try again.";
-      const errorString = error.message || "";
-      
-      if (errorString === "EMAIL_EXISTS" || errorString.toLowerCase().includes("email") && errorString.toLowerCase().includes("exists")) {
-        errorMessage = "A user with this email address already exists. Please use a different email.";
-      } else if (errorString.toLowerCase().includes("password") && errorString.includes("8")) {
-        errorMessage = "Password must be at least 8 characters long.";
-      } else if (errorString.toLowerCase().includes("invalid") && errorString.toLowerCase().includes("email")) {
-        errorMessage = "Please enter a valid email address.";
-      } else if (errorString.toLowerCase().includes("name") && errorString.toLowerCase().includes("required")) {
-        errorMessage = "Please enter the user's full name.";
-      } else if (errorString.includes("non-2xx")) {
-        errorMessage = "Unable to create user. The email may already be registered.";
-      }
-      
       toast({
         title: "Unable to create user",
-        description: errorMessage,
+        description: "Something went wrong. Please try again.",
         variant: "warning",
       });
     } finally {
