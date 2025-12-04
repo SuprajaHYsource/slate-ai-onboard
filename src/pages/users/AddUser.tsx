@@ -60,30 +60,53 @@ export default function AddUser() {
         data: { user: currentUser },
       } = await supabase.auth.getUser();
 
-      // Create user via Supabase Auth Admin API (requires service role)
-      // Since we can't use service role from client, we'll create via edge function
-      const { data: authData, error: authError } = await supabase.functions.invoke(
-        "create-user",
-        {
+      // Create user via edge function with explicit error handling
+      let authData: any = null;
+      let authError: any = null;
+      
+      try {
+        const result = await supabase.functions.invoke("create-user", {
           body: {
             email: formData.email,
             password: formData.password,
             full_name: formData.full_name,
           },
+        });
+        authData = result.data;
+        authError = result.error;
+      } catch (invokeError: any) {
+        // Handle thrown exceptions from functions.invoke
+        console.log("Functions invoke threw:", invokeError);
+        const errorStr = invokeError?.message || String(invokeError) || "";
+        
+        if (errorStr.toLowerCase().includes("email") && 
+            (errorStr.toLowerCase().includes("exists") || errorStr.toLowerCase().includes("already"))) {
+          setLoading(false);
+          toast({
+            title: "Unable to create user",
+            description: "A user with this email address already exists. Please use a different email.",
+            variant: "destructive",
+          });
+          return;
         }
-      );
+        
+        setLoading(false);
+        toast({
+          title: "Unable to create user",
+          description: "Failed to create user. Please try again.",
+          variant: "destructive",
+        });
+        return;
+      }
 
-      // Handle edge function errors
+      // Handle edge function errors from returned error object
       if (authError || authData?.error) {
-        // Get error details from authData if available
         const errorCode = authData?.code || "";
         let errorMsg = authData?.error || "";
         let isEmailExists = errorCode === "email_exists";
         
-        // If no error message from data, check the error object
         if (!errorMsg && authError) {
           errorMsg = authError.message || "";
-          // Try to extract error from the message (format: "... {"error":"...","code":"..."}")
           const jsonMatch = errorMsg.match(/\{[^}]+\}/);
           if (jsonMatch) {
             try {
@@ -91,12 +114,11 @@ export default function AddUser() {
               errorMsg = parsed.error || errorMsg;
               isEmailExists = isEmailExists || parsed.code === "email_exists";
             } catch {
-              // JSON parse failed, use original message
+              // JSON parse failed
             }
           }
         }
         
-        // Check for email exists error
         isEmailExists = isEmailExists || 
             errorMsg.toLowerCase().includes("already exists") || 
             errorMsg.toLowerCase().includes("already been registered") ||
