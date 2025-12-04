@@ -136,9 +136,24 @@ export default function AddUser() {
       navigate("/users");
     } catch (error: any) {
       console.error("Error creating user:", error);
+      
+      // Parse user-friendly error messages
+      let errorMessage = "Failed to create user. Please try again.";
+      const errorString = error.message?.toLowerCase() || "";
+      
+      if (errorString.includes("email") && (errorString.includes("exists") || errorString.includes("already"))) {
+        errorMessage = "A user with this email address already exists. Please use a different email.";
+      } else if (errorString.includes("password") && errorString.includes("8")) {
+        errorMessage = "Password must be at least 8 characters long.";
+      } else if (errorString.includes("invalid") && errorString.includes("email")) {
+        errorMessage = "Please enter a valid email address.";
+      } else if (errorString.includes("name") && errorString.includes("required")) {
+        errorMessage = "Please enter the user's full name.";
+      }
+      
       toast({
-        title: "Error",
-        description: error.message || "Failed to create user",
+        title: "Unable to create user",
+        description: errorMessage,
         variant: "destructive",
       });
     } finally {
