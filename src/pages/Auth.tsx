@@ -79,9 +79,15 @@ const Auth = () => {
       if (error) throw error;
 
       if (data.exists) {
-        // Existing user - show password field
-        setUserExists(true);
-        setStep("password");
+        if (data.isActive === false) {
+          toast({ title: "Account suspended", description: "This account is suspended. Contact your administrator.", variant: "destructive" });
+          setUserExists(true);
+          setStep("email");
+        } else {
+          // Existing user - show password field
+          setUserExists(true);
+          setStep("password");
+        }
       } else {
         // New user - collect password before sending OTP
         setUserExists(false);
@@ -131,6 +137,13 @@ const Auth = () => {
     setLoading(true);
 
     try {
+      const { data: checkData, error: checkError } = await supabase.functions.invoke("check-user", { body: { email: formData.email } });
+      if (checkError) throw checkError;
+      if (checkData?.isActive === false) {
+        toast({ title: "Account suspended", description: "This account is suspended. Contact your administrator.", variant: "destructive" });
+        return;
+      }
+
       const { error } = await supabase.auth.signInWithPassword({
         email: formData.email,
         password: formData.password,

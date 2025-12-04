@@ -271,8 +271,8 @@ export default function UserList() {
       await supabase.from("activity_logs").insert({
         user_id: deleteUserId,
         performed_by: user?.id,
-        action_type: "user_deleted",
-        description: "User account deactivated",
+        action_type: "user_status_changed",
+        description: "User account suspended",
         module: "users",
         target: deleteUserId,
         status: "success",
@@ -280,7 +280,7 @@ export default function UserList() {
 
       toast({
         title: "Success",
-        description: "User deactivated successfully",
+        description: "User suspended successfully",
       });
 
       fetchUsers();
@@ -540,7 +540,7 @@ export default function UserList() {
                             ) : (
                               <Edit className="mr-2 h-4 w-4" />
                             )}
-                            {user.is_active ? "Deactivate" : "Activate"}
+                            {user.is_active ? "Suspend" : "Activate"}
                           </DropdownMenuItem>
                         )}
                       </DropdownMenuContent>
@@ -556,16 +556,16 @@ export default function UserList() {
       <AlertDialog open={!!deleteUserId} onOpenChange={() => setDeleteUserId(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Deactivate User</AlertDialogTitle>
+            <AlertDialogTitle>Suspend User</AlertDialogTitle>
             <AlertDialogDescription>
-              Are you sure you want to deactivate this user? This will mark the
-              account as inactive but preserve all data.
+              Are you sure you want to suspend this user? This will mark the
+              account as inactive and block access with credentials.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction onClick={handleDeleteUser}>
-              Deactivate
+              Suspend
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
