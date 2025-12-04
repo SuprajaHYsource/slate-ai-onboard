@@ -72,6 +72,10 @@ export default function UserList() {
   const [inviteEmails, setInviteEmails] = useState("");
   const [inviteTeamName, setInviteTeamName] = useState("");
   const [inviting, setInviting] = useState(false);
+  const [initialLoadDone, setInitialLoadDone] = useState(false);
+
+  // Stable permission check
+  const canView = !permLoading && hasPermission("users", "view");
 
   // Initial load only - once permissions and roles are ready
   useEffect(() => {
@@ -361,7 +365,7 @@ export default function UserList() {
   }
 
   return (
-    <div className={`space-y-6 ${initialRender.current ? "animate-fade-in" : ""}`}>
+    <div className="space-y-6 animate-fade-in">
       <div className="flex justify-between items-center">
         <div>
           <h1 className="text-3xl font-bold text-foreground">User Management</h1>
