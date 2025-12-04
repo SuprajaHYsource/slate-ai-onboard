@@ -436,9 +436,6 @@ const Auth = () => {
             {step === "password" && "Enter your password to sign in"}
             {step === "profile" && "Tell us a bit about yourself"}
           </CardDescription>
-          {(step === "password" || step === "signup") && (
-            <p className="text-sm text-muted-foreground">Welcome back</p>
-          )}
         </CardHeader>
         <CardContent className="space-y-4">
           {/* Email Step */}
