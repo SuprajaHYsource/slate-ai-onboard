@@ -73,25 +73,39 @@ export default function AddUser() {
         }
       );
 
-      // Handle edge function errors - check both authError and authData for errors
-      if (authError) {
-        // For non-2xx responses, authData may still contain the error details
+      // Handle edge function errors
+      if (authError || authData?.error) {
+        // Get error details from authData if available, otherwise parse from error message
         const errorCode = authData?.code || "";
-        const errorMsg = authData?.error || authError.message || "";
+        let errorMsg = authData?.error || "";
         
-        if (errorCode === "email_exists" || errorMsg.toLowerCase().includes("already exists") || errorMsg.toLowerCase().includes("already been registered")) {
+        // If no error message from data, check the error object
+        if (!errorMsg && authError) {
+          errorMsg = authError.message || "";
+          // Try to extract error from the message (format: "... {"error":"...","code":"..."}")
+          const jsonMatch = errorMsg.match(/\{[^}]+\}/);
+          if (jsonMatch) {
+            try {
+              const parsed = JSON.parse(jsonMatch[0]);
+              errorMsg = parsed.error || errorMsg;
+              if (parsed.code === "email_exists") {
+                throw new Error("EMAIL_EXISTS");
+              }
+            } catch (e) {
+              // JSON parse failed, use original message
+            }
+          }
+        }
+        
+        // Check for email exists error
+        if (errorCode === "email_exists" || 
+            errorMsg.toLowerCase().includes("already exists") || 
+            errorMsg.toLowerCase().includes("already been registered") ||
+            errorMsg.toLowerCase().includes("email_exists")) {
           throw new Error("EMAIL_EXISTS");
         }
-        throw new Error(errorMsg);
-      }
-
-      // Also check if authData itself contains an error (for 2xx responses with error in body)
-      if (authData?.error) {
-        const errorCode = authData.code || "";
-        if (errorCode === "email_exists" || authData.error.toLowerCase().includes("already exists")) {
-          throw new Error("EMAIL_EXISTS");
-        }
-        throw new Error(authData.error);
+        
+        throw new Error(errorMsg || "Failed to create user");
       }
 
       const newUserId = authData.user.id;
