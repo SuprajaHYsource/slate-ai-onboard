@@ -73,17 +73,25 @@ export default function AddUser() {
         }
       );
 
-      // Check if the response contains an error (edge function returns error in data for non-2xx)
+      // Handle edge function errors - check both authError and authData for errors
+      if (authError) {
+        // For non-2xx responses, authData may still contain the error details
+        const errorCode = authData?.code || "";
+        const errorMsg = authData?.error || authError.message || "";
+        
+        if (errorCode === "email_exists" || errorMsg.toLowerCase().includes("already exists") || errorMsg.toLowerCase().includes("already been registered")) {
+          throw new Error("EMAIL_EXISTS");
+        }
+        throw new Error(errorMsg);
+      }
+
+      // Also check if authData itself contains an error (for 2xx responses with error in body)
       if (authData?.error) {
         const errorCode = authData.code || "";
         if (errorCode === "email_exists" || authData.error.toLowerCase().includes("already exists")) {
           throw new Error("EMAIL_EXISTS");
         }
         throw new Error(authData.error);
-      }
-
-      if (authError) {
-        throw authError;
       }
 
       const newUserId = authData.user.id;
