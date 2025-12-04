@@ -67,6 +67,7 @@ export default function UserList() {
   const [loading, setLoading] = useState(true);
   const [deleteUserId, setDeleteUserId] = useState<string | null>(null);
   const [activateUserId, setActivateUserId] = useState<string | null>(null);
+  const [hardDeleteUserId, setHardDeleteUserId] = useState<string | null>(null);
   const [updatingRole, setUpdatingRole] = useState<string | null>(null);
   const [inviteOpen, setInviteOpen] = useState(false);
   const [inviteEmails, setInviteEmails] = useState("");
@@ -335,6 +336,36 @@ export default function UserList() {
     }
   };
 
+  const handleHardDeleteUser = async () => {
+    if (!hardDeleteUserId) return;
+
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+
+      const { data, error } = await supabase.functions.invoke("delete-user", {
+        body: { userId: hardDeleteUserId },
+      });
+      if (error) throw error;
+
+      await supabase.from("activity_logs").insert({
+        user_id: hardDeleteUserId,
+        performed_by: user?.id,
+        action_type: "user_deleted",
+        description: "User permanently deleted",
+        module: "users",
+        target: hardDeleteUserId,
+        status: "success",
+      });
+
+      toast({ title: "Deleted", description: "User has been permanently deleted" });
+      fetchUsers();
+    } catch (error: any) {
+      toast({ title: "Error", description: error.message || "Failed to delete user", variant: "destructive" });
+    } finally {
+      setHardDeleteUserId(null);
+    }
+  };
+
 
 
   const getInitials = (name: string) => {
@@ -540,7 +571,12 @@ export default function UserList() {
                             ) : (
                               <Edit className="mr-2 h-4 w-4" />
                             )}
-                            {user.is_active ? "Suspend" : "Activate"}
+                            {user.is_active ? "Inactive" : "Activate"}
+                          </DropdownMenuItem>
+                        )}
+                        {hasPermission("users", "delete") && (
+                          <DropdownMenuItem onClick={() => setHardDeleteUserId(user.user_id)}>
+                            <Trash2 className="mr-2 h-4 w-4 text-destructive" /> Delete User
                           </DropdownMenuItem>
                         )}
                       </DropdownMenuContent>
@@ -556,16 +592,16 @@ export default function UserList() {
       <AlertDialog open={!!deleteUserId} onOpenChange={() => setDeleteUserId(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Suspend User</AlertDialogTitle>
+            <AlertDialogTitle>Set Inactive</AlertDialogTitle>
             <AlertDialogDescription>
-              Are you sure you want to suspend this user? This will mark the
-              account as inactive and block access with credentials.
+              Are you sure you want to mark this account as inactive? This will
+              block access with credentials but keep the account and data.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction onClick={handleDeleteUser}>
-              Suspend
+              Inactivate
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -583,6 +619,24 @@ export default function UserList() {
             <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction onClick={handleActivateUser}>
               Activate
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog open={!!hardDeleteUserId} onOpenChange={() => setHardDeleteUserId(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete User</AlertDialogTitle>
+            <AlertDialogDescription>
+              This action permanently deletes the user account and removes all
+              associated profile and role data. This cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleHardDeleteUser} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+              Delete
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
