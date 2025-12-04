@@ -91,7 +91,7 @@ const STATUSES = [
 ];
 
 export default function ActivityLogs() {
-  const { hasPermission } = usePermissions();
+  const { hasPermission, loading: permLoading } = usePermissions();
   const [logs, setLogs] = useState<ActivityLog[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchEmail, setSearchEmail] = useState("");
@@ -104,28 +104,27 @@ export default function ActivityLogs() {
   const [pageSize, setPageSize] = useState(25);
   const [total, setTotal] = useState(0);
   const [pageLoading, setPageLoading] = useState(false);
+  const [initialLoadDone, setInitialLoadDone] = useState(false);
 
+  // Check permission once and store result
+  const canView = !permLoading && hasPermission("activity_logs", "view");
+
+  // Initial load only
   useEffect(() => {
-    if (hasPermission("activity_logs", "view")) {
-      fetchLogs();
+    if (!permLoading && canView && !initialLoadDone) {
+      setInitialLoadDone(true);
+      fetchLogs(1, pageSize);
+    } else if (!permLoading && !canView) {
+      setLoading(false);
     }
-  }, [hasPermission]);
+  }, [permLoading, canView]);
 
+  // Handle filter changes - only after initial load
   useEffect(() => {
-    if (hasPermission("activity_logs", "view")) {
-      setPage(1);
+    if (initialLoadDone && canView) {
       fetchLogs(1, pageSize);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [actionFilter, moduleFilter, statusFilter, startDate, endDate]);
-
-  useEffect(() => {
-    if (hasPermission("activity_logs", "view")) {
-      setPage(1);
-      fetchLogs(1, pageSize);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [pageSize]);
+  }, [actionFilter, moduleFilter, statusFilter, startDate, endDate, pageSize]);
 
   const fetchLogs = async (pageArg: number = page, pageSizeArg: number = pageSize) => {
     setPageLoading(true);
@@ -333,7 +332,7 @@ export default function ActivityLogs() {
       .join(" ");
   };
 
-  if (loading) {
+  if (loading || permLoading) {
     return (
       <div className="space-y-6 animate-fade-in">
         <div>
@@ -351,7 +350,7 @@ export default function ActivityLogs() {
     );
   }
 
-  if (!hasPermission("activity_logs", "view")) {
+  if (!canView) {
     return (
       <div className="text-center py-12">
         <p className="text-muted-foreground">
