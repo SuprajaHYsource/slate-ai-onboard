@@ -92,9 +92,9 @@ export default function AddUser() {
         if (isEmailExists) {
           setLoading(false);
           toast({
-            title: "Unable to create user",
+            title: "Email already registered",
             description: "A user with this email address already exists. Please use a different email.",
-            variant: "destructive",
+            variant: "warning",
           });
           return;
         }
@@ -103,7 +103,7 @@ export default function AddUser() {
         toast({
           title: "Unable to create user",
           description: responseData?.error || "Failed to create user. Please try again.",
-          variant: "destructive",
+          variant: "warning",
         });
         return;
       }
@@ -182,7 +182,7 @@ export default function AddUser() {
       toast({
         title: "Unable to create user",
         description: errorMessage,
-        variant: "destructive",
+        variant: "warning",
       });
     } finally {
       setLoading(false);
