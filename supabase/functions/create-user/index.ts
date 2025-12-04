@@ -111,20 +111,22 @@ serve(async (req) => {
     console.error("Error in create-user function:", error);
     
     // Handle specific error cases
-    let statusCode = 400;
     let errorMessage = error.message || "Failed to create user";
+    let errorCode = error.code || "unknown_error";
     
     // Check if it's a duplicate email error
     if (error.code === "email_exists" || error.message?.includes("already been registered")) {
-      statusCode = 409; // Conflict status code
+      errorCode = "email_exists";
       errorMessage = "A user with this email address already exists";
     }
     
+    // Return 200 with error in body to avoid Lovable's error overlay
+    // The frontend will check for the error field in the response
     return new Response(
-      JSON.stringify({ error: errorMessage, code: error.code }),
+      JSON.stringify({ error: errorMessage, code: errorCode, success: false }),
       {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
-        status: statusCode,
+        status: 200, // Use 200 to prevent error overlay, error is in response body
       }
     );
   }
