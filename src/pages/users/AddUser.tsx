@@ -75,9 +75,10 @@ export default function AddUser() {
 
       // Handle edge function errors
       if (authError || authData?.error) {
-        // Get error details from authData if available, otherwise parse from error message
+        // Get error details from authData if available
         const errorCode = authData?.code || "";
         let errorMsg = authData?.error || "";
+        let isEmailExists = errorCode === "email_exists";
         
         // If no error message from data, check the error object
         if (!errorMsg && authError) {
@@ -88,24 +89,36 @@ export default function AddUser() {
             try {
               const parsed = JSON.parse(jsonMatch[0]);
               errorMsg = parsed.error || errorMsg;
-              if (parsed.code === "email_exists") {
-                throw new Error("EMAIL_EXISTS");
-              }
-            } catch (e) {
+              isEmailExists = isEmailExists || parsed.code === "email_exists";
+            } catch {
               // JSON parse failed, use original message
             }
           }
         }
         
         // Check for email exists error
-        if (errorCode === "email_exists" || 
+        isEmailExists = isEmailExists || 
             errorMsg.toLowerCase().includes("already exists") || 
             errorMsg.toLowerCase().includes("already been registered") ||
-            errorMsg.toLowerCase().includes("email_exists")) {
-          throw new Error("EMAIL_EXISTS");
+            errorMsg.toLowerCase().includes("email_exists");
+        
+        if (isEmailExists) {
+          setLoading(false);
+          toast({
+            title: "Unable to create user",
+            description: "A user with this email address already exists. Please use a different email.",
+            variant: "destructive",
+          });
+          return;
         }
         
-        throw new Error(errorMsg || "Failed to create user");
+        setLoading(false);
+        toast({
+          title: "Unable to create user",
+          description: errorMsg || "Failed to create user. Please try again.",
+          variant: "destructive",
+        });
+        return;
       }
 
       const newUserId = authData.user.id;
