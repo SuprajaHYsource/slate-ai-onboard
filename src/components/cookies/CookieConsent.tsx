@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
+import { X } from "lucide-react";
 
 type Consent = {
   necessary: boolean;
@@ -32,7 +33,12 @@ export default function CookieConsent() {
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle className="flex items-center justify-between">Cookie Policy</DialogTitle>
+          <DialogTitle className="flex items-center justify-between">
+            <span>Cookie Policy</span>
+            <button aria-label="Close" onClick={() => setOpen(false)}>
+              <X className="h-4 w-4" />
+            </button>
+          </DialogTitle>
         </DialogHeader>
         <div className="space-y-4">
           <p className="text-sm text-muted-foreground">
