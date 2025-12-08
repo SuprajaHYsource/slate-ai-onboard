@@ -39,7 +39,7 @@ export default function ChangeEmailDialog({
     setLoading(true);
     try {
       const { error } = await supabase.functions.invoke("send-otp", {
-        body: { email: currentEmail },
+        body: { email: currentEmail, flow: "email_change" },
       });
 
       if (error) throw error;
@@ -88,7 +88,7 @@ export default function ChangeEmailDialog({
 
       // Send OTP to new email
       const { error: sendError } = await supabase.functions.invoke("send-otp", {
-        body: { email: newEmail },
+        body: { email: newEmail, flow: "email_change" },
       });
 
       if (sendError) throw sendError;
@@ -142,48 +142,31 @@ export default function ChangeEmailDialog({
 
       if (!user) throw new Error("Not authenticated");
 
-      // Update email in auth.users
-      const { error: updateError } = await supabase.auth.updateUser({
-        email: newEmail,
+      // Update email using edge function (admin API) to properly sync auth.users
+      const { data: updateResult, error: updateError } = await supabase.functions.invoke("update-email", {
+        body: { 
+          userId: user.id, 
+          newEmail: newEmail,
+          oldEmail: currentEmail
+        },
       });
 
       if (updateError) {
-        // Handle specific error for email already registered
-        if (updateError.message?.includes("already been registered")) {
-          throw new Error("This email is already in use by another account");
-        }
+        console.error("Update email error:", updateError);
         throw new Error("Failed to update email. Please try again.");
       }
 
-      // Update profile
-      await (supabase.from("profiles") as any)
-        .update({ email: newEmail, email_verified: true })
-        .eq("user_id", user.id);
-
-      // Log activity
-      await (supabase.from("activity_logs") as any).insert({
-        user_id: user.id,
-        performed_by: user.id,
-        action_type: "email_change",
-        description: `Email changed from ${currentEmail} to ${newEmail}`,
-        metadata: {
-          old_email: currentEmail,
-          new_email: newEmail,
-        },
-        module: "profile",
-        status: "success",
-      });
-      await (supabase as any).from("notifications").insert({
-        user_id: user.id,
-        type: "email_changed",
-        title: "Email updated",
-        message: `Your email was changed to ${newEmail}`,
-      });
+      if (!updateResult?.success) {
+        throw new Error(updateResult?.error || "Failed to update email. Please try again.");
+      }
 
       toast({
         title: "Success",
-        description: "Email changed successfully",
+        description: "Email changed successfully. Please log in with your new email.",
       });
+
+      // Sign out the user so they can log in with the new email
+      await supabase.auth.signOut();
 
       onSuccess(newEmail);
       onOpenChange(false);
@@ -348,7 +331,7 @@ export default function ChangeEmailDialog({
                 setNewOtp("");
                 try {
                   const { error } = await supabase.functions.invoke("send-otp", {
-                    body: { email: newEmail },
+                    body: { email: newEmail, flow: "email_change" },
                   });
 
                   if (error) throw error;
