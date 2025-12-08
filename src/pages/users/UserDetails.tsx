@@ -56,13 +56,38 @@ export default function UserDetails() {
       if (profileError) throw profileError;
       setProfile(profileData);
 
-      // Fetch roles
+      // Fetch roles (both system and custom)
       const { data: rolesData } = await supabase
         .from("user_roles")
-        .select("role")
+        .select("role, custom_role_id")
         .eq("user_id", userId);
 
-      setRoles(rolesData?.map((r) => r.role) || []);
+      // Fetch custom role names if any
+      const customRoleIds = rolesData?.filter(r => r.custom_role_id).map(r => r.custom_role_id) || [];
+      let customRoleNames: Record<string, string> = {};
+      
+      if (customRoleIds.length > 0) {
+        const { data: customRoles } = await supabase
+          .from("custom_roles")
+          .select("id, name")
+          .in("id", customRoleIds);
+        
+        customRoles?.forEach(cr => {
+          customRoleNames[cr.id] = cr.name;
+        });
+      }
+
+      // Build roles list with both system and custom role names
+      const rolesList: string[] = [];
+      rolesData?.forEach(r => {
+        if (r.role) {
+          rolesList.push(r.role);
+        }
+        if (r.custom_role_id && customRoleNames[r.custom_role_id]) {
+          rolesList.push(customRoleNames[r.custom_role_id]);
+        }
+      });
+      setRoles(rolesList);
 
       // Fetch recent activity logs
       const { data: logsData } = await supabase
@@ -174,11 +199,11 @@ export default function UserDetails() {
               <div>
                 <p className="text-sm text-muted-foreground mb-2">Assigned Roles</p>
                 <div className="flex flex-wrap gap-2">
-                  {roles.map((role) => (
+                  {roles.length > 0 ? roles.map((role) => (
                     <Badge key={role} className={getRoleBadgeColor(role)}>
-                      {role.replace("_", " ").toUpperCase()}
+                      {role?.replace(/_/g, " ").toUpperCase()}
                     </Badge>
-                  ))}
+                  )) : <span className="text-muted-foreground">No roles assigned</span>}
                 </div>
               </div>
               <div>
