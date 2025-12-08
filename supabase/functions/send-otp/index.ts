@@ -83,14 +83,29 @@ serve(async (req) => {
       },
     });
 
+    // Determine email subject and heading based on flow
+    let emailSubject = "Your SLATE AI Verification Code";
+    let emailHeading = "SLATE AI Verification";
+    
+    if (flow === "email_change") {
+      emailSubject = "Change Email - SLATE AI Verification Code";
+      emailHeading = "Change Email";
+    } else if (flow === "forgot_password") {
+      emailSubject = "Password Reset - SLATE AI Verification Code";
+      emailHeading = "Password Reset";
+    } else if (flow === "signup") {
+      emailSubject = "Welcome to SLATE AI - Verification Code";
+      emailHeading = "Welcome to SLATE AI";
+    }
+
     await client.send({
       from: `"SLATE AI" <${Deno.env.get("SMTP_USER")}>`,
       to: email,
-      subject: "Your SLATE AI Verification Code",
+      subject: emailSubject,
       content: "auto",
       html: `
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-          <h2 style="color: #3b82f6;">SLATE AI Verification</h2>
+          <h2 style="color: #3b82f6;">${emailHeading}</h2>
           <p>Hello,</p>
           <p>Your SLATE AI verification code is:</p>
           <div style="background-color: #f3f4f6; padding: 20px; text-align: center; border-radius: 8px; margin: 20px 0;">
