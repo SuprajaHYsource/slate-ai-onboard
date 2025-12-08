@@ -45,16 +45,19 @@ export default function RolesTab() {
   const fetchUserCounts = async () => {
     try {
       // Fetch system role counts
-      const { data: systemCounts, error: systemError } = await supabase
+      const { data: allUserRoles, error: systemError } = await supabase
         .from("user_roles")
-        .select("role");
+        .select("role, custom_role_id");
 
       if (systemError) throw systemError;
 
       const counts: Record<string, number> = {};
-      systemCounts?.forEach((ur) => {
+      allUserRoles?.forEach((ur: any) => {
         if (ur.role) {
           counts[ur.role] = (counts[ur.role] || 0) + 1;
+        } else if (ur.custom_role_id) {
+          const customKey = `custom_${ur.custom_role_id}`;
+          counts[customKey] = (counts[customKey] || 0) + 1;
         }
       });
 
@@ -134,10 +137,10 @@ export default function RolesTab() {
             Manage system roles and their descriptions
           </p>
         </div>
-        {isSuperAdmin && hasPermission("rbac", "create") && (
+        {(isSuperAdmin || hasPermission("rbac", "create")) && (
           <Button onClick={() => navigate("/rbac/create")}>
             <Plus className="w-4 h-4 mr-2" />
-            Add Role
+            Add Custom Role
           </Button>
         )}
       </div>
@@ -172,7 +175,7 @@ export default function RolesTab() {
                 </TableCell>
                 <TableCell className="text-center">
                   <Badge variant="outline">
-                    {role.type === "system" ? userCounts[role.value] || 0 : 0}
+                    {userCounts[role.value] || 0}
                   </Badge>
                 </TableCell>
                 <TableCell className="text-right">
