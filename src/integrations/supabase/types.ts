@@ -179,15 +179,20 @@ export type Database = {
           contact_number: string | null
           created_at: string
           date_of_birth: string | null
+          department: string | null
           email: string
           email_verified: boolean | null
+          employee_id: string | null
           full_name: string
           gender: string | null
           id: string
           is_active: boolean | null
           is_sso: boolean | null
+          join_date: string | null
           last_sign_in: string | null
+          location: string | null
           password_set: boolean | null
+          position: string | null
           profile_picture_url: string | null
           signup_method: string | null
           updated_at: string
@@ -198,15 +203,20 @@ export type Database = {
           contact_number?: string | null
           created_at?: string
           date_of_birth?: string | null
+          department?: string | null
           email: string
           email_verified?: boolean | null
+          employee_id?: string | null
           full_name: string
           gender?: string | null
           id?: string
           is_active?: boolean | null
           is_sso?: boolean | null
+          join_date?: string | null
           last_sign_in?: string | null
+          location?: string | null
           password_set?: boolean | null
+          position?: string | null
           profile_picture_url?: string | null
           signup_method?: string | null
           updated_at?: string
@@ -217,15 +227,20 @@ export type Database = {
           contact_number?: string | null
           created_at?: string
           date_of_birth?: string | null
+          department?: string | null
           email?: string
           email_verified?: boolean | null
+          employee_id?: string | null
           full_name?: string
           gender?: string | null
           id?: string
           is_active?: boolean | null
           is_sso?: boolean | null
+          join_date?: string | null
           last_sign_in?: string | null
+          location?: string | null
           password_set?: boolean | null
+          position?: string | null
           profile_picture_url?: string | null
           signup_method?: string | null
           updated_at?: string
