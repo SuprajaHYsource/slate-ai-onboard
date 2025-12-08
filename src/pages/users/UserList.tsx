@@ -19,7 +19,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Plus, Search, Edit, Trash2, Mail, MoreVertical, Eye } from "lucide-react";
+import { Plus, Search, Edit, Trash2, Mail, MoreVertical, Eye, Ban, UserCheck } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
 import { usePermissions } from "@/hooks/usePermissions";
@@ -35,6 +35,12 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 interface UserProfile {
   id: string;
@@ -564,14 +570,16 @@ export default function UserList() {
                           </DropdownMenuItem>
                         )}
 
-                        {hasPermission("users", "delete") && (
-                          <DropdownMenuItem onClick={() => (user.is_active ? setDeleteUserId(user.user_id) : setActivateUserId(user.user_id))}>
-                            {user.is_active ? (
-                              <Trash2 className="mr-2 h-4 w-4 text-destructive" />
-                            ) : (
-                              <Edit className="mr-2 h-4 w-4" />
-                            )}
-                            {user.is_active ? "Inactive" : "Activate"}
+                        {hasPermission("users", "delete") && user.is_active && (
+                          <DropdownMenuItem onClick={() => setDeleteUserId(user.user_id)} className="text-amber-600">
+                            <Ban className="mr-2 h-4 w-4" />
+                            Suspend User
+                          </DropdownMenuItem>
+                        )}
+                        {hasPermission("users", "delete") && !user.is_active && (
+                          <DropdownMenuItem onClick={() => setActivateUserId(user.user_id)} className="text-green-600">
+                            <UserCheck className="mr-2 h-4 w-4" />
+                            Activate User
                           </DropdownMenuItem>
                         )}
                         {hasPermission("users", "delete") && (
@@ -759,9 +767,3 @@ export default function UserList() {
     </div>
   );
 }
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
