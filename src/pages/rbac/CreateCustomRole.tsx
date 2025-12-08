@@ -21,7 +21,7 @@ type Permission = {
 export default function CreateCustomRole() {
   const navigate = useNavigate();
   const { toast } = useToast();
-  const { hasRole, loading: permissionsLoading } = usePermissions();
+  const { hasRole, hasPermission, loading: permissionsLoading } = usePermissions();
   const [saving, setSaving] = useState(false);
   const [permissions, setPermissions] = useState<Permission[]>([]);
   const [selectedPermissions, setSelectedPermissions] = useState<Set<string>>(new Set());
@@ -33,17 +33,18 @@ export default function CreateCustomRole() {
   });
 
   const isSuperAdmin = hasRole("super_admin");
+  const canCreate = isSuperAdmin || hasPermission("rbac", "create");
 
   useEffect(() => {
     // Wait for permissions to load before checking access
     if (permissionsLoading) return;
     
-    if (!isSuperAdmin) {
+    if (!canCreate) {
       navigate("/rbac");
       return;
     }
     fetchPermissions();
-  }, [isSuperAdmin, permissionsLoading]);
+  }, [canCreate, permissionsLoading]);
 
   const fetchPermissions = async () => {
     try {
