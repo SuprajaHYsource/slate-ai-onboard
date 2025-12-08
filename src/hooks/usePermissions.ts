@@ -19,27 +19,63 @@ export function usePermissions() {
       } = await supabase.auth.getUser();
       if (!user) return;
 
-      // Fetch user roles
+      // Fetch user roles including custom_role_id
       const { data: userRoles } = await (supabase
         .from("user_roles") as any)
-        .select("role")
+        .select("role, custom_role_id")
         .eq("user_id", user.id);
 
-      let rolesList = userRoles?.map((r: any) => r.role).filter(Boolean) || [];
+      // Build roles list - include both system roles and custom role names
+      let rolesList: string[] = [];
+      const customRoleIds: string[] = [];
+
+      for (const r of userRoles || []) {
+        if (r.role) {
+          rolesList.push(r.role);
+        }
+        if (r.custom_role_id) {
+          customRoleIds.push(r.custom_role_id);
+        }
+      }
+
+      // Fetch custom role names
+      if (customRoleIds.length > 0) {
+        const { data: customRoles } = await (supabase
+          .from("custom_roles") as any)
+          .select("id, name")
+          .in("id", customRoleIds);
+        
+        for (const cr of customRoles || []) {
+          rolesList.push(cr.name);
+        }
+      }
+
       const hasUpgraded = rolesList.some((r: string) => ["super_admin", "admin", "hr", "manager"].includes(r));
       if (hasUpgraded) {
         rolesList = rolesList.filter((r: string) => r !== "employee");
       }
       setRoles(rolesList);
 
-      // Fetch permissions for these roles
+      // Fetch permissions for system roles
+      const systemRoles = rolesList.filter(r => ["super_admin", "admin", "hr", "manager", "employee"].includes(r)) as ("super_admin" | "admin" | "hr" | "manager" | "employee")[];
       const { data: rolePermissions } = await supabase
         .from("role_permissions")
         .select("permission_id, permissions(module, action)")
-        .in("role", rolesList.length > 0 ? rolesList : ["employee"]);
+        .in("role", systemRoles.length > 0 ? systemRoles : ["employee"]);
 
+      // Fetch permissions for custom roles
+      let customRolePermissions: any[] = [];
+      if (customRoleIds.length > 0) {
+        const { data: crPerms } = await (supabase
+          .from("role_permissions") as any)
+          .select("permission_id, permissions(module, action)")
+          .in("custom_role_id", customRoleIds);
+        customRolePermissions = crPerms || [];
+      }
+
+      const allRolePerms = [...(rolePermissions || []), ...customRolePermissions];
       const perms =
-        rolePermissions?.map((rp: any) => ({
+        allRolePerms?.map((rp: any) => ({
           module: rp.permissions.module,
           action: rp.permissions.action,
         })) || [];
