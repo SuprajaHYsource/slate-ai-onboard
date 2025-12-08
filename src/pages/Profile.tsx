@@ -92,10 +92,27 @@ export default function Profile() {
         .select("role, custom_role_id")
         .eq("user_id", user.id)
         .maybeSingle();
-      const roleValue = roleData?.role || (roleData?.custom_role_id ? `custom_${roleData.custom_role_id}` : null);
-      setUserRole(roleValue || null);
+      
+      let roleValue = roleData?.role || null;
+      let customRoleName: string | null = null;
+      
+      // Fetch custom role name if assigned
+      if (roleData?.custom_role_id) {
+        const { data: customRole } = await (supabase as any)
+          .from("custom_roles")
+          .select("name")
+          .eq("id", roleData.custom_role_id)
+          .single();
+        customRoleName = customRole?.name || null;
+      }
+      
+      setUserRole(roleValue || customRoleName || null);
 
-      const mapDeptPos = (role?: string | null) => {
+      const mapDeptPos = (role?: string | null, customRole?: string | null) => {
+        // If custom role, use that name for position
+        if (customRole) {
+          return { department: (profileData as any).department || "", position: customRole };
+        }
         switch (role) {
           case "super_admin":
             return { department: "Administration", position: "Super Admin" };
@@ -105,16 +122,18 @@ export default function Profile() {
             return { department: "Human Resources", position: "HR" };
           case "manager":
             return { department: "Management", position: "Manager" };
+          case "employee":
+            return { department: (profileData as any).department || "", position: "User" };
           default:
-            return { department: "Operations", position: "User" };
+            return { department: (profileData as any).department || "", position: (profileData as any).position || "" };
         }
       };
 
-      const mapped = mapDeptPos(roleValue);
+      const mapped = mapDeptPos(roleValue, customRoleName);
       setWorkForm({
         employee_id: (profileData as any).employee_id || "",
-        department: mapped.department,
-        position: mapped.position,
+        department: mapped.department || (profileData as any).department || "",
+        position: mapped.position || (profileData as any).position || "",
         join_date: (profileData as any).join_date || "",
         location: (profileData as any).location || "",
       });
