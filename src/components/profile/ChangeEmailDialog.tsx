@@ -142,12 +142,18 @@ export default function ChangeEmailDialog({
 
       if (!user) throw new Error("Not authenticated");
 
-      // Update email
+      // Update email in auth.users
       const { error: updateError } = await supabase.auth.updateUser({
         email: newEmail,
       });
 
-      if (updateError) throw updateError;
+      if (updateError) {
+        // Handle specific error for email already registered
+        if (updateError.message?.includes("already been registered")) {
+          throw new Error("This email is already in use by another account");
+        }
+        throw new Error("Failed to update email. Please try again.");
+      }
 
       // Update profile
       await (supabase.from("profiles") as any)
@@ -186,9 +192,10 @@ export default function ChangeEmailDialog({
       setOldOtp("");
       setNewOtp("");
     } catch (error: any) {
+      const errorMessage = error?.message || "Wrong OTP, please check and re-enter again";
       toast({
-        title: "Verification Failed",
-        description: "Wrong OTP, please check and re-enter again",
+        title: "Email Change Failed",
+        description: errorMessage,
         variant: "destructive",
       });
     } finally {
