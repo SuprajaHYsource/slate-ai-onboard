@@ -257,17 +257,23 @@ export default function Profile() {
   const calculateCompletion = () => {
     if (!profile) return;
 
+    // Check personal info fields
+    const profileData = profile as any;
     const fields = [
-      profile.profile_picture_url,
-      profile.full_name,
-      profile.email_verified,
-      profile.contact_number,
-      profile.gender,
-      profile.date_of_birth,
-      profile.address,
+      profileData.profile_picture_url,
+      profileData.full_name,
+      profileData.contact_number,
+      profileData.date_of_birth,
+      profileData.address,
+      // Work details fields
+      profileData.employee_id,
+      profileData.department,
+      profileData.position,
+      profileData.join_date,
+      profileData.location,
     ];
 
-    const completed = fields.filter((field) => !!field).length;
+    const completed = fields.filter((field) => field && field.toString().trim() !== "").length;
     const percentage = Math.round((completed / fields.length) * 100);
     setCompletionPercentage(percentage);
   };
